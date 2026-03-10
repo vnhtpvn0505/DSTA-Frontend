@@ -1,0 +1,51 @@
+---
+description: Next.js App Router patterns — route groups, layouts, providers
+globs: src/app/**
+alwaysApply: false
+---
+
+# Next.js Patterns
+
+## Route Groups
+
+```
+src/app/
+├── (protected)/    # Requires auth — wraps with Navigation or AdminDashboardLayout
+│   ├── layout.tsx  # Auth guard + layout switching
+│   ├── dashboard/
+│   ├── exam/
+│   ├── result/
+│   ├── reports/
+│   ├── settings/
+│   ├── student/
+│   └── exams/
+├── (public)/       # No auth required
+│   ├── login/
+│   └── register/
+└── page.tsx        # Landing page (login/register/forgot-password form switch)
+```
+
+## Layout Hierarchy
+
+1. `app/layout.tsx` — Root: fonts, metadata, `<AppProviders>` (QueryClient + GlobalLoading)
+2. `app/(protected)/layout.tsx` — Auth check, renders `AdminDashboardLayout` for admin routes or `Navigation` + children for student routes
+
+## Admin vs Student Shell
+
+```typescript
+const ADMIN_ROUTES = ['/dashboard', '/student', '/exams', '/reports', '/settings']
+// Admin on admin routes → AdminDashboardLayout (sidebar + header)
+// Student or non-admin routes → Navigation bar + content
+```
+
+## Adding a New Protected Page
+
+1. Create `src/app/(protected)/my-page/page.tsx`
+2. Add `'use client'` directive
+3. Wrap content in `<RoleGuard allowedRoles={[...]}>`
+4. Add route to `ROLE_PERMISSIONS` in `src/lib/authorization.ts`
+5. Add nav link in `src/components/common/Navigation.tsx` if needed
+
+## Client Components
+
+All interactive pages use `'use client'` — hooks (useAuth, useRouter, useState, etc.) require it.

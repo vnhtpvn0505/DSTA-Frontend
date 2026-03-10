@@ -1,0 +1,53 @@
+---
+description: UI/UX conventions — Tailwind, shadcn/ui, mobile-first, Vietnamese text
+globs: src/components/**,src/features/**,src/app/**/*.tsx
+alwaysApply: false
+---
+
+# UI Conventions
+
+## Component Library
+
+- Use **shadcn/ui** components from `@/components/ui/` (Button, Input, Form, Dialog, Label)
+- shadcn style: **new-york**, base color: **slate**, CSS variables enabled
+- Add new shadcn components via `npx shadcn@latest add <name>`
+
+## Tailwind CSS 4
+
+- Config in `src/app/globals.css` using `@theme inline` block
+- Custom colors: `--color-main: #003562`, `--color-semantic-info: #0EA5E9`, `--color-safety-orange: #FF6A00`
+- Background: `#F1F5F9`, protected pages: `bg-[#E8F4FF]`
+
+## Mobile-First
+
+- Touch targets: minimum **44px** (h-11 / h-12)
+- Font sizes: minimum **16px** on mobile inputs (prevents iOS zoom)
+- Use responsive prefixes: base → `sm:` → `md:` → `lg:`
+
+## Vietnamese UI Text
+
+- All user-facing labels, placeholders, error messages in **Vietnamese**
+- Code (variable names, comments) in **English**
+- Examples: "Đăng nhập", "Đăng ký", "Mật khẩu", "Trang chủ"
+
+## Form Pattern
+
+```tsx
+// Always use React Hook Form + Zod
+const form = useForm<MyInput>({
+  resolver: zodResolver(mySchema),
+  defaultValues: { ... },
+})
+
+// Wrap in shadcn Form
+<Form {...form}>
+  <form onSubmit={form.handleSubmit(onSubmit)}>
+    <FormField control={form.control} name="field" render={...} />
+  </form>
+</Form>
+```
+
+## Animations
+
+- Page/form transitions: Framer Motion (`AnimatePresence` + `motion.div`)
+- CSS keyframes in `globals.css` for simpler effects (shine, tab-enter)

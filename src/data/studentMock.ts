@@ -1,0 +1,83 @@
+import type { StudentStatCardItem, StudentTableRow } from '@/types/student';
+
+export const studentStatsMock: StudentStatCardItem[] = [
+  {
+    title: 'Tổng sinh viên',
+    value: 2420,
+    trendPercent: 40,
+    trendUp: true,
+    icon: 'users',
+  },
+  {
+    title: 'Tổng sinh viên hoàn thành',
+    value: 2420,
+    trendPercent: 40,
+    trendUp: true,
+    icon: 'completed',
+  },
+  {
+    title: 'Tổng sinh viên không hoàn thành',
+    value: 2420,
+    trendPercent: 10,
+    trendUp: false,
+    icon: 'incomplete',
+  },
+];
+
+export const studentTableMock: StudentTableRow[] = [
+  {
+    id: '1',
+    studentName: 'Trần Văn Bảo',
+    studentEmail: 'alex.nguyen@nguyentrai.edu.com',
+    mssv: '456789012',
+    submittedAt: '10:20 PM',
+    submittedDate: '12/02/2026',
+    score: '500/1000',
+    levelLabel: 'Bậc 3',
+    result: 'PASS',
+  },
+  {
+    id: '2',
+    studentName: 'Nguyễn Thị Mai',
+    studentEmail: 'mai.nguyen@nguyentrai.edu.com',
+    mssv: '456789013',
+    submittedAt: '09:15 AM',
+    submittedDate: '11/02/2026',
+    score: '420/1000',
+    levelLabel: 'Bậc 2',
+    result: 'FAIL',
+  },
+  {
+    id: '3',
+    studentName: 'Lê Hoàng Nam',
+    studentEmail: 'nam.le@nguyentrai.edu.com',
+    mssv: '456789014',
+    submittedAt: '02:30 PM',
+    submittedDate: '12/02/2026',
+    score: '-',
+    levelLabel: '-',
+    result: 'PENDING',
+  },
+  {
+    id: '4',
+    studentName: 'Phạm Thu Hà',
+    studentEmail: 'ha.pham@nguyentrai.edu.com',
+    mssv: '456789015',
+    submittedAt: '04:45 PM',
+    submittedDate: '11/02/2026',
+    score: '680/1000',
+    levelLabel: 'Bậc 4',
+    result: 'PASS',
+  },
+  {
+    id: '5',
+    studentName: 'Hoàng Văn Đức',
+    studentEmail: 'duc.hoang@nguyentrai.edu.com',
+    mssv: '456789016',
+    submittedAt: '11:00 AM',
+    submittedDate: '10/02/2026',
+    score: '350/1000',
+    levelLabel: 'Bậc 1',
+    result: 'FAIL',
+  },
+];

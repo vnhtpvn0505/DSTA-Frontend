@@ -1,0 +1,36 @@
+---
+description: VNT frontend project overview — tech stack, structure, and conventions
+alwaysApply: true
+---
+
+# Project Overview
+
+VNT is an online exam/assessment platform for students, built with:
+
+- **Next.js 16** (App Router, `src/` directory, TypeScript strict)
+- **Tailwind CSS 4** + **shadcn/ui** (new-york style, CSS variables, slate base)
+- **Zustand** for client auth state (`src/stores/auth.store.ts`)
+- **TanStack React Query** for server state
+- **React Hook Form** + **Zod** for form validation
+- **Axios** for HTTP (`src/lib/axios.ts`)
+- **Framer Motion** for animations
+- **UI language:** Vietnamese (labels, messages, placeholders)
+
+## Directory Structure
+
+```
+src/app/          → Pages (App Router route groups)
+src/components/   → common/ (Navigation, RoleGuard), dashboard/, ui/ (shadcn)
+src/features/     → Feature modules (auth/)
+src/hooks/        → Custom hooks (useAuth, useAuthorization)
+src/lib/          → Shared utilities (axios, authorization, queryClient)
+src/stores/       → Zustand stores
+src/types/        → TypeScript type definitions
+```
+
+## Code Style
+
+- Prettier: no semicolons, single quotes, trailing comma es6, 100 char width
+- Functional components only, named `export default`
+- Path alias: `@/` → `src/`
+- Import order: react → next → third-party → @/ aliases → relative

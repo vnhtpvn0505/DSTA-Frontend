@@ -1,0 +1,56 @@
+---
+description: API integration patterns — Axios config, service layer, React Query
+globs: src/lib/axios*,src/features/**/**.service*,src/features/**/**.schema*
+alwaysApply: false
+---
+
+# API Integration
+
+## Axios Instance
+
+```typescript
+// src/lib/axios.ts
+baseURL: 'http://220.231.94.117:8081/api/v1'
+withCredentials: false  // backend uses wildcard CORS origin
+headers: { 'Content-Type': 'application/json' }
+```
+
+401 responses auto-redirect to `/`.
+
+## Service Layer Pattern
+
+Each feature has a `*.service.ts` that exports an object with async methods:
+
+```typescript
+// src/features/auth/auth.service.ts
+export const authService = {
+  login: async (data: LoginInput) => { ... },
+  register: async (data) => { ... },
+  getMe: async () => { ... },
+  logout: async () => { ... },
+}
+```
+
+## Validation Schema Pattern
+
+Each feature has a `*.schema.ts` using Zod:
+
+```typescript
+// src/features/auth/auth.schema.ts
+export const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) })
+export type LoginInput = z.infer<typeof loginSchema>
+```
+
+## React Query Usage
+
+- `queryClient` from `src/lib/queryClient.ts`
+- **Queries:** `useQuery({ queryKey: ['me'], queryFn: authService.getMe })`
+- **Mutations:** `useMutation({ mutationFn: authService.login, onSuccess, onError })`
+- Invalidate after mutations: `queryClient.invalidateQueries({ queryKey: ['me'] })`
+
+## Adding a New API Feature
+
+1. Create `src/features/<name>/<name>.schema.ts` — Zod schemas + types
+2. Create `src/features/<name>/<name>.service.ts` — Axios calls
+3. Use `useMutation` / `useQuery` in components
+4. Handle errors with `(error as { response?: { data?: { message?: string } } })` pattern

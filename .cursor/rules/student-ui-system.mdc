@@ -1,0 +1,65 @@
+---
+description: Student-facing UI system — layout, sidebar, colors, card patterns for consistency
+globs: src/app/(protected)/**,src/components/dashboard/Student*
+alwaysApply: false
+---
+
+# Student UI System
+
+All student-facing pages share a consistent shell and visual language.
+
+## Layout Shell
+
+Every protected student page renders inside `StudentDashboardLayout`:
+- **Left sidebar** (231px, white, `StudentSidebar`) — logo, 3 nav items: Tổng quan, Lịch sử bài thi, Chứng chỉ
+- **Top header** (`StudentHeader`) — sticky, avatar + name + email dropdown with logout
+- **Content area** — `bg-[#E8F4FF]`, scrollable
+
+Admin pages use `AdminDashboardLayout` (navy sidebar). The protected layout (`src/app/(protected)/layout.tsx`) switches automatically by role.
+
+## Color Tokens (use Tailwind tokens, not raw hex)
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `text-main` / `bg-main` | #003562 | Primary navy — headings, buttons, sidebar active (admin) |
+| `text-safety-orange` | #FF6A00 | Sidebar active state (student), accents |
+| `text-semantic-info` / `bg-semantic-info` | #0EA5E9 | Info badges, links |
+| `bg-[#E8F4FF]` | — | Page background (all protected pages) |
+| `bg-[#FFF1E6]` | — | Student sidebar active bg |
+
+Always use `bg-main` instead of `bg-[#003562]`, `text-safety-orange` instead of `text-[#FF6A00]`, etc.
+
+## Card Pattern
+
+All content cards use:
+```
+rounded-2xl bg-white p-6 shadow-sm
+```
+
+Avoid `shadow-md` or `shadow-lg` on content cards — keep them subtle (`shadow-sm`).
+
+## Student Page Templates
+
+### Dashboard (`/dashboard`)
+1. `StudentProfileCard` — avatar, name, MSSV, faculty, CTA button
+2. `StudentStatsRow` — 3-column grid: score, level, attempts
+3. `StudentRadarChart` — competency radar + progress bars
+
+### Exam Intro (`/exam`)
+- Centered white card (`max-w-lg rounded-3xl`) over decorative ellipse bg
+- Title (bold navy uppercase), description, info table (border rounded), start button
+
+### Exam Taking (`/exam/[id]/take`)
+- Full-screen with sticky timer, progress bar, one question per screen, bottom nav buttons
+
+## Typography
+
+- Page/card titles: `text-xl font-bold text-gray-900` or `text-main`
+- Subtitles/labels: `text-sm text-gray-500`
+- Stat values: `text-3xl font-extrabold text-gray-900`
+- Body text: `text-sm leading-relaxed text-gray-500`
+
+## Buttons
+
+- Primary: `bg-main text-white hover:bg-[#002244] rounded-xl h-11 or h-12`
+- With icon: add `gap-2` and Lucide icon at 16px (`h-4 w-4`)

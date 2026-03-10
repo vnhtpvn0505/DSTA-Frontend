@@ -1,0 +1,88 @@
+---
+description: React 19 & Next.js 16 performance rules — rendering, code splitting, caching, images
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Performance
+
+## Client vs Server Boundary
+
+- Push `'use client'` as deep as possible — only leaf-level interactive elements need it.
+- Server Components eliminate JS from the bundle; keep data-fetching and static rendering on the server side.
+- Never add `'use client'` to layouts or pages unless they use hooks/browser APIs.
+
+## Avoid Request Waterfalls
+
+```typescript
+// BAD — sequential fetches (waterfall)
+const users = await getUsers()
+const exams = await getExams()
+
+// GOOD — parallel fetches
+const [users, exams] = await Promise.all([getUsers(), getExams()])
+```
+
+- Move data-fetching into the component that needs it, not a parent layout.
+- Use `<Suspense fallback={...}>` to stream slow sections independently.
+
+## React 19 Memoization
+
+React 19's compiler auto-memoizes most components — do NOT add `useMemo`, `useCallback`, or `React.memo` by default. Only reach for them when:
+
+1. **Profiler confirms** a re-render bottleneck (measure first, optimize second).
+2. Callbacks passed to **third-party libs** that require stable references.
+3. Functions inside `useEffect` dependency arrays causing infinite loops (prefer moving the function inside the effect instead).
+4. Truly **expensive computations** (complex data transforms, large list filtering).
+
+```typescript
+// BAD — premature memoization, the compiler already handles this
+const value = useMemo(() => items.filter(i => i.active), [items])
+
+// GOOD — let the compiler do its job; only add useMemo if profiler shows a problem
+const value = items.filter(i => i.active)
+```
+
+## Code Splitting & Dynamic Imports
+
+Lazy-load heavy components not needed on initial render:
+
+```typescript
+import dynamic from 'next/dynamic'
+
+const HeavyChart = dynamic(() => import('@/components/dashboard/HeavyChart'), {
+  loading: () => <div className="h-64 animate-pulse rounded-xl bg-gray-200" />,
+  ssr: false, // only if component uses window/localStorage/browser-only APIs
+})
+```
+
+Good candidates: charts (Recharts), rich editors, PDF viewers, admin analytics.
+
+## React Query Caching
+
+Configure `staleTime` to avoid unnecessary refetches:
+
+```typescript
+useQuery({
+  queryKey: ['exams'],
+  queryFn: examService.getAll,
+  staleTime: 2 * 60 * 1000,  // 2 min — don't refetch on every mount
+  gcTime: 10 * 60 * 1000,    // 10 min — keep in cache while inactive
+})
+```
+
+- Use `queryClient.invalidateQueries()` after mutations instead of relying on stale timers.
+- Multiple components sharing the same `queryKey` make only ONE request (auto-dedup).
+
+## Images
+
+- Always use `next/image` instead of `<img>` — auto WebP/AVIF, lazy load, CLS prevention.
+- Add `priority` to above-the-fold images (hero, logo).
+- Use static imports for local images (enables blur placeholder + auto dimensions).
+- Set explicit `width`/`height` or use `fill` + `sizes` for remote images.
+
+## Bundle Hygiene
+
+- Import only what you need: `import { Button } from '...'` not `import * as UI`.
+- Avoid importing large libraries at the top level — use `dynamic()` or lazy `import()`.
+- Check bundle size with `npx @next/bundle-analyzer` when adding new dependencies.

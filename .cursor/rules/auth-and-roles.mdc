@@ -1,0 +1,50 @@
+---
+description: Authentication flow and role-based authorization rules
+globs: src/features/auth/**,src/hooks/useAuth*,src/hooks/useAuthorization*,src/lib/authorization*,src/stores/auth*,src/components/common/RoleGuard*,src/components/common/Navigation*
+alwaysApply: false
+---
+
+# Auth & Role System
+
+## Roles (2 user roles + guest)
+
+| Role    | Allowed Routes                                            |
+| ------- | --------------------------------------------------------- |
+| student | /dashboard, /exam, /result                                |
+| admin   | /dashboard, /student, /exams, /reports, /settings, /result |
+| guest   | / (landing), /verify                                      |
+
+**There is NO teacher role.** Never generate code referencing a teacher role.
+
+## Key Types
+
+```typescript
+type UserRole = 'student' | 'admin'  // src/types/user.ts
+interface User { id: string; email: string; role: UserRole; schoolId: string; classId?: string }
+```
+
+## Auth Flow
+
+1. Login/Register forms in `src/features/auth/`
+2. API calls via `authService` → `src/features/auth/auth.service.ts`
+3. On success, hydrate `useAuthStore` (Zustand) with User object
+4. `useAuth()` hook exposes `{ user, isAuthenticated, isLoading }`
+5. `useAuthorization()` exposes `{ isAdmin, isStudent, isGuest, hasPermission }`
+
+## Route Protection
+
+- `src/app/(protected)/layout.tsx` redirects unauthenticated users to `/`
+- Use `<RoleGuard allowedRoles={['student', 'admin']}>` inside pages for role checks
+- Permission logic lives in `src/lib/authorization.ts` (`ROLE_PERMISSIONS`, `hasPermission`)
+
+## Login API
+
+`POST /auth/login` with `{ username: <email>, password }` — backend expects email as the `username` field.
+
+## Register API
+
+`POST /auth/register` with full payload. Fields without UI input default to `""`:
+
+```typescript
+{ username, password, firstName, email, className, avatar, dateOfBirth, school, faculty, universityName, facultyName, phoneNumber }
+```
