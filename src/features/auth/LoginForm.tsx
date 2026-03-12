@@ -24,7 +24,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { getDefaultRouteForRole } from '@/lib/authorization';
 import { cn } from '@/lib/utils';
 
-const USE_MOCK_AUTH = false;
+const USE_MOCK_AUTH = true;
 
 interface LoginFormProps {
   onSwitchToRegister?: () => void;
