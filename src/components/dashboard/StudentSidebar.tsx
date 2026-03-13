@@ -13,7 +13,7 @@ const SYSTEM_NAME = 'Hệ thống đánh giá\nnăng lực số'
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/exam', label: 'Lịch sử bài thi', icon: History },
-  { href: '/result', label: 'Chứng chỉ', icon: Award },
+  { href: '/certificate', label: 'Chứng chỉ', icon: Award },
 ]
 
 export default function StudentSidebar() {

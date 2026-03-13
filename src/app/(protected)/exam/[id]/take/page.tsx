@@ -57,7 +57,7 @@ export default function TakeExamPage() {
     if (timerRef.current) clearInterval(timerRef.current)
     sessionStorage.removeItem('examSession')
     // TODO: POST answers to API
-    router.push('/result')
+    router.push('/certificate')
   }, [router])
 
   if (!session) {

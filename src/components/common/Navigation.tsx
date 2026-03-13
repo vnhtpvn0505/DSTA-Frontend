@@ -20,7 +20,7 @@ interface NavLink {
 const navLinks: NavLink[] = [
   { href: '/dashboard', label: 'Trang chủ', roles: ['student', 'admin'] },
   { href: '/exam', label: 'Thi', roles: ['student', 'admin'] },
-  { href: '/result', label: 'Kết quả', roles: ['student', 'admin'] },
+  { href: '/certificate', label: 'Chứng chỉ', roles: ['student', 'admin'] },
   { href: '/reports', label: 'Báo cáo', roles: ['admin'] },
   { href: '/dashboard', label: 'Quản trị', roles: ['admin'] },
 ];
