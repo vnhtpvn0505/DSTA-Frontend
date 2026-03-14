@@ -61,7 +61,7 @@ export default function LoginForm({
     onError: (error: unknown) => {
       setErrorMessage(
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-          'Đăng nhập thất bại. Vui lòng thử lại.'
+          'Đăng nhập thất bại. Vui lòng thử lại.',
       )
     },
   })
