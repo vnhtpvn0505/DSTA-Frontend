@@ -1,20 +1,8 @@
 import axios from 'axios'
 
-const resolveBaseURL = () => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
-  }
-
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/api/v1`
-  }
-
-  return 'http://220.231.94.117:8081/api/v1'
-}
-
 const axiosInstance = axios.create({
-  baseURL: resolveBaseURL(),
-  withCredentials: false,
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,7 +17,7 @@ axiosInstance.interceptors.response.use(
       }
     }
     return Promise.reject(error)
-  },
+  }
 )
 
 export default axiosInstance

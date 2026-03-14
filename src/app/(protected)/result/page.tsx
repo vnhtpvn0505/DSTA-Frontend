@@ -30,7 +30,7 @@ export default function ResultPage() {
                 Kết quả thi
               </h1>
               <p className="mt-1 text-sm text-gray-500">
-                Xin chào {user?.fullName ?? user?.email}, đây là tổng quan kết
+                Xin chào {user?.email}, đây là tổng quan kết
                 quả các bài thi của bạn.
               </p>
             </div>

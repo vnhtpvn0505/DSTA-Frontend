@@ -43,7 +43,7 @@ export default function CertificatePage() {
             </h1>
             {user && (
               <p className="mt-1 text-sm text-gray-500">
-                {user.fullName ?? user.email}
+                {user.email}
               </p>
             )}
           </header>
