@@ -1,49 +1,42 @@
-'use client';
+'use client'
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, LoginInput } from './auth.schema';
-import { authService } from './auth.service';
-import { useMutation } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
-import Link from 'next/link';
-import { User, Lock, Eye, EyeOff } from 'lucide-react';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { getMockUser } from '@/utils/mockUsers';
-import { useAuthStore } from '@/stores/auth.store';
-import { getDefaultRouteForRole } from '@/lib/authorization';
-import { cn } from '@/lib/utils';
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { loginSchema, LoginInput } from './auth.schema'
+import { authService } from './auth.service'
+import { useMutation } from '@tanstack/react-query'
+import { queryClient } from '@/lib/queryClient'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import Link from 'next/link'
+import { User, Lock, Eye, EyeOff } from 'lucide-react'
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { getMockUser } from '@/utils/mockUsers'
+import { useAuthStore } from '@/stores/auth.store'
+import { getDefaultRouteForRole } from '@/lib/authorization'
+import { cn } from '@/lib/utils'
 
-const USE_MOCK_AUTH = true;
+const USE_MOCK_AUTH = true
 
 interface LoginFormProps {
-  onSwitchToRegister?: () => void;
-  onSwitchToForgotPassword?: () => void;
+  onSwitchToRegister?: () => void
+  onSwitchToForgotPassword?: () => void
 }
 
-const loginTitleClass =
-  'text-center font-bold text-[40px] uppercase text-white';
+const loginTitleClass = 'text-center font-bold text-[40px] uppercase text-white'
 
 export default function LoginForm({
   onSwitchToRegister,
   onSwitchToForgotPassword,
 }: LoginFormProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const isAdmin = searchParams.get('isAdmin') === 'true';
-  const [errorMessage, setErrorMessage] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const { setUser } = useAuthStore();
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isAdmin = searchParams.get('isAdmin') === 'true'
+  const [errorMessage, setErrorMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const { setUser } = useAuthStore()
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -51,7 +44,7 @@ export default function LoginForm({
       email: '',
       password: '',
     },
-  });
+  })
 
   const loginMutation = useMutation({
     mutationFn: authService.login,
@@ -61,42 +54,40 @@ export default function LoginForm({
         email: form.getValues('email') ?? '',
         role: 'student',
         schoolId: '',
-      });
-      queryClient.invalidateQueries({ queryKey: ['me'] });
-      router.push('/dashboard');
+      })
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      router.push('/dashboard')
     },
     onError: (error: unknown) => {
       setErrorMessage(
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Đăng nhập thất bại. Vui lòng thử lại.'
-      );
+          'Đăng nhập thất bại. Vui lòng thử lại.'
+      )
     },
-  });
+  })
 
   const onSubmit = (data: LoginInput) => {
-    setErrorMessage('');
+    setErrorMessage('')
 
-    if (USE_MOCK_AUTH) {
-      const email = data.email.toLowerCase();
-      try {
-        const mockUser = email.includes('admin')
-          ? getMockUser('admin')
-          : getMockUser('student');
-        setUser(mockUser);
-        router.push(getDefaultRouteForRole(mockUser.role));
-      } catch {
-        setErrorMessage('Đăng nhập thất bại. Vui lòng thử lại.');
-      }
-    } else {
-      loginMutation.mutate(data);
-    }
-  };
+    loginMutation.mutate(data)
+    // if (USE_MOCK_AUTH) {
+    //   const email = data.email.toLowerCase();
+    //   try {
+    //     const mockUser = email.includes('admin')
+    //       ? getMockUser('admin')
+    //       : getMockUser('student');
+    //     setUser(mockUser);
+    //     router.push(getDefaultRouteForRole(mockUser.role));
+    //   } catch {
+    //     setErrorMessage('Đăng nhập thất bại. Vui lòng thử lại.');
+    //   }
+    // } else {
+    // }
+  }
 
   return (
     <div className="w-full max-w-md rounded-3xl bg-[#00284D] p-8 shadow-xl">
-      <h1 className={loginTitleClass}>
-        {isAdmin ? 'Admin Login' : 'Login'}
-      </h1>
+      <h1 className={loginTitleClass}>{isAdmin ? 'Admin Login' : 'Login'}</h1>
 
       {USE_MOCK_AUTH && (
         <p className="mt-2 text-center text-xs text-gray-400">
@@ -153,11 +144,7 @@ export default function LoginForm({
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </FormControl>
@@ -171,34 +158,31 @@ export default function LoginForm({
             disabled={!USE_MOCK_AUTH && loginMutation.isPending}
             className="h-12 w-full rounded-xl bg-blue-400 font-medium uppercase text-white hover:bg-blue-500"
           >
-            {!USE_MOCK_AUTH && loginMutation.isPending
-              ? 'Đang đăng nhập...'
-              : 'Đăng nhập'}
+            {!USE_MOCK_AUTH && loginMutation.isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
 
-          <div className={
-            cn("flex items-center justify-between pt-2 text-sm", {
-              "justify-center": isAdmin
-            })
-          }>
-            {!isAdmin && <>
-              {onSwitchToRegister ? (
-                <button
-                  type="button"
-                  onClick={onSwitchToRegister}
-                  className="text-gray-300 hover:text-white cursor-pointer"
-                >
-                  Đăng ký
-                </button>
-              ) : (
-                <Link
-                  href="/"
-                  className="text-gray-300 hover:text-white"
-                >
-                  Đăng ký
-                </Link>
-              )}
-            </>}
+          <div
+            className={cn('flex items-center justify-between pt-2 text-sm', {
+              'justify-center': isAdmin,
+            })}
+          >
+            {!isAdmin && (
+              <>
+                {onSwitchToRegister ? (
+                  <button
+                    type="button"
+                    onClick={onSwitchToRegister}
+                    className="text-gray-300 hover:text-white cursor-pointer"
+                  >
+                    Đăng ký
+                  </button>
+                ) : (
+                  <Link href="/" className="text-gray-300 hover:text-white">
+                    Đăng ký
+                  </Link>
+                )}
+              </>
+            )}
             {onSwitchToForgotPassword ? (
               <button
                 type="button"
@@ -219,5 +203,5 @@ export default function LoginForm({
         </form>
       </Form>
     </div>
-  );
+  )
 }
