@@ -29,9 +29,11 @@ export default function ProtectedLayout({
     return null
   }
 
-  if (user?.role === 'admin') {
-    return <AdminDashboardLayout>{children}</AdminDashboardLayout>
-  }
-
-  return <StudentDashboardLayout>{children}</StudentDashboardLayout>
+  // admin → AdminDashboardLayout | user/student → StudentDashboardLayout
+  const isAdmin = user?.role === 'admin'
+  return isAdmin ? (
+    <AdminDashboardLayout>{children}</AdminDashboardLayout>
+  ) : (
+    <StudentDashboardLayout>{children}</StudentDashboardLayout>
+  )
 }

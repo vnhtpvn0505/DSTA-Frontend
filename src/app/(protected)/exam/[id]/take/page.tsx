@@ -1,18 +1,23 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import ExamQuestionNav from '@/components/exam/ExamQuestionNav'
 import ExamHeader from '@/components/exam/ExamHeader'
 import ExamOptionList from '@/components/exam/ExamOptionList'
 import ExamFooter from '@/components/exam/ExamFooter'
+import { examService } from '@/features/exam/exam.service'
 import type { ExamSession } from '@/types/exam'
 
 export default function TakeExamPage() {
   const router = useRouter()
+  const params = useParams()
+  const examId = params?.id != null ? Number(params.id) : NaN
 
   const [session, setSession] = useState<ExamSession | null>(null)
+  const [loadingRestore, setLoadingRestore] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [flagged, setFlagged] = useState<Set<number>>(new Set())
@@ -21,19 +26,52 @@ export default function TakeExamPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem('examSession')
-      if (raw) {
-        const parsed: ExamSession = JSON.parse(raw)
-        setSession(parsed)
-        setTimeRemaining(parsed.remainingTime)
-      } else {
-        router.replace('/exam')
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const raw = sessionStorage.getItem('examSession')
+        if (raw) {
+          const parsed: ExamSession = JSON.parse(raw)
+          if (parsed.id === examId || !Number.isFinite(examId)) {
+            if (!cancelled) {
+              setSession(parsed)
+              setTimeRemaining(parsed.remainingTime)
+            }
+            setLoadingRestore(false)
+            return
+          }
+        }
+        if (!Number.isFinite(examId)) {
+          if (!cancelled) router.replace('/exam')
+          setLoadingRestore(false)
+          return
+        }
+        const restored = await examService.getSessionById(examId)
+        if (cancelled) return
+        if (restored) {
+          setSession(restored)
+          setTimeRemaining(restored.remainingTime)
+          try {
+            sessionStorage.setItem('examSession', JSON.stringify(restored))
+          } catch {
+            /* ignore */
+          }
+        } else {
+          router.replace('/exam')
+        }
+      } catch {
+        if (!cancelled) router.replace('/exam')
+      } finally {
+        if (!cancelled) setLoadingRestore(false)
       }
-    } catch {
-      router.replace('/exam')
     }
-  }, [router])
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [router, examId])
 
   useEffect(() => {
     if (!session) return
@@ -62,8 +100,8 @@ export default function TakeExamPage() {
 
   if (!session) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-main border-t-transparent" />
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#00284D] border-t-transparent" />
       </div>
     )
   }
@@ -74,6 +112,7 @@ export default function TakeExamPage() {
   const isCritical = timeRemaining < 5 * 60
   const answeredSet = new Set(Object.keys(answers).map(Number))
   const selectedOptionId = answers[currentIndex] ?? null
+  const hasSelection = selectedOptionId != null
 
   const handleSelectOption = (optionId: number) => {
     setAnswers((prev) => ({ ...prev, [currentIndex]: optionId }))
@@ -87,76 +126,69 @@ export default function TakeExamPage() {
     if (currentIndex > 0) setCurrentIndex((i) => i - 1)
   }
 
-  const handleFlag = () => {
-    setFlagged((prev) => {
-      const next = new Set(prev)
-      if (next.has(currentIndex)) {
-        next.delete(currentIndex)
-      } else {
-        next.add(currentIndex)
-      }
+  const handleClearCurrent = () => {
+    setAnswers((prev) => {
+      const next = { ...prev }
+      delete next[currentIndex]
       return next
     })
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#E8F4FF]">
-      {/* Left: Question navigation sidebar */}
-      <ExamQuestionNav
-        total={total}
-        current={currentIndex}
-        answeredSet={answeredSet}
-        flaggedSet={flagged}
-        onSelect={setCurrentIndex}
-        onSubmit={() => setShowSubmitConfirm(true)}
+    <div className="flex h-screen flex-col overflow-hidden bg-[#F5F7FA]">
+      {/* Header: Assessment title + timer + user */}
+      <ExamHeader
+        questionNumber={currentIndex + 1}
+        timeRemaining={timeRemaining}
+        isCritical={isCritical}
       />
 
-      {/* Right: Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header bar */}
-        <ExamHeader
-          questionNumber={currentIndex + 1}
-          timeRemaining={timeRemaining}
-          isCritical={isCritical}
-          onNext={handleNext}
-          hasNext={currentIndex < total - 1}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left: Question list sidebar */}
+        <ExamQuestionNav
+          total={total}
+          current={currentIndex}
+          answeredSet={answeredSet}
+          flaggedSet={flagged}
+          onSelect={setCurrentIndex}
+          onSubmit={() => setShowSubmitConfirm(true)}
         />
 
-        {/* Progress indicator */}
-        <div className="h-1 bg-gray-200">
-          <div
-            className="h-full bg-main transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
+        {/* Right: Question content + options + footer */}
+        <div className="flex flex-1 flex-col overflow-hidden bg-white">
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="mx-auto max-w-3xl">
+              <Link
+                href="#"
+                className="mb-4 inline-block rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200"
+                onClick={(e) => e.preventDefault()}
+              >
+                Hướng dẫn làm bài thi
+              </Link>
+
+              <h2 className="mb-6 text-xl font-bold leading-relaxed text-gray-900">
+                {currentQ.content}
+              </h2>
+
+              <ExamOptionList
+                options={currentQ.options}
+                selectedOptionId={selectedOptionId}
+                onSelect={handleSelectOption}
+              />
+            </div>
+          </div>
+
+          <ExamFooter
+            onPrevious={handlePrev}
+            onNext={handleNext}
+            onClearCurrent={handleClearCurrent}
+            hasPrevious={currentIndex > 0}
+            hasNext={currentIndex < total - 1}
+            hasSelection={hasSelection}
           />
         </div>
-
-        {/* Question + Options */}
-        <div className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="mb-8 text-lg font-semibold leading-relaxed text-gray-900">
-              {currentQ.content}
-            </h2>
-
-            <ExamOptionList
-              options={currentQ.options}
-              selectedOptionId={selectedOptionId}
-              onSelect={handleSelectOption}
-            />
-          </div>
-        </div>
-
-        {/* Footer navigation */}
-        <ExamFooter
-          onPrevious={handlePrev}
-          onNext={handleNext}
-          onFlag={handleFlag}
-          hasPrevious={currentIndex > 0}
-          hasNext={currentIndex < total - 1}
-          isFlagged={flagged.has(currentIndex)}
-        />
       </div>
 
-      {/* Submit dialog */}
       <ConfirmDialog
         open={showSubmitConfirm}
         onOpenChange={setShowSubmitConfirm}

@@ -13,13 +13,16 @@ export default function Pagination({
   totalPages,
   onPageChange,
 }: PaginationProps) {
+  const safeTotal = Math.max(1, Number(totalPages) || 1);
+  const safeCurrent = Math.min(Math.max(1, Number(currentPage) || 1), safeTotal);
+
   const showPages = (): (number | 'ellipsis')[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (safeTotal <= 7) {
+      return Array.from({ length: safeTotal }, (_, i) => i + 1);
     }
     const result: (number | 'ellipsis')[] = [1, 2, 3];
     result.push('ellipsis');
-    result.push(totalPages - 2, totalPages - 1, totalPages);
+    result.push(safeTotal - 2, safeTotal - 1, safeTotal);
     return result;
   };
 
@@ -29,8 +32,8 @@ export default function Pagination({
     <div className="mt-6 flex items-center justify-center gap-1">
       <button
         type="button"
-        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage <= 1}
+        onClick={() => onPageChange(Math.max(1, safeCurrent - 1))}
+        disabled={safeCurrent <= 1}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         aria-label="Trang trước"
       >
@@ -43,11 +46,11 @@ export default function Pagination({
           </span>
         ) : (
           <button
-            key={p}
+            key={typeof p === 'number' && !Number.isNaN(p) ? p : `page-${i}`}
             type="button"
             onClick={() => onPageChange(p as number)}
             className={`inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-medium cursor-pointer ${
-              currentPage === p
+              safeCurrent === p
                 ? 'bg-[#00284D] text-white'
                 : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
             }`}
@@ -58,8 +61,8 @@ export default function Pagination({
       )}
       <button
         type="button"
-        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage >= totalPages}
+        onClick={() => onPageChange(Math.min(safeTotal, safeCurrent + 1))}
+        disabled={safeCurrent >= safeTotal}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         aria-label="Trang sau"
       >

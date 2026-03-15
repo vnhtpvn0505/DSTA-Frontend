@@ -34,19 +34,15 @@ export default function Navigation() {
 
   const logoutMutation = useMutation({
     mutationFn: authService.logout,
-    onSuccess: () => {
+    onSettled: () => {
+      clearUser();
       queryClient.invalidateQueries({ queryKey: ['me'] });
+      router.replace('/');
     },
   });
 
   const handleLogout = () => {
-    // Navigate first to avoid flash
-    router.replace('/');
-    // Then clear user after navigation starts
-    setTimeout(() => {
-      clearUser();
-      queryClient.invalidateQueries({ queryKey: ['me'] });
-    }, 0);
+    logoutMutation.mutate();
   };
 
   const canAccessLink = (link: NavLink) => {

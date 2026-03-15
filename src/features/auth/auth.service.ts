@@ -17,11 +17,22 @@ export type RegisterV1Payload = {
   phoneNumber: string;
 };
 
-function profileToUser(p: UserProfile): User {
+/**
+ * Map backend role to frontend role.
+ * Backend: "user" | "admin" → Frontend: "student" | "admin"
+ * - admin → admin (Admin dashboard)
+ * - user / student / other → student (Student dashboard)
+ */
+function mapRole(backendRole: string | undefined): import('@/types/user').UserRole {
+  const role = String(backendRole || '').trim().toLowerCase()
+  return role === 'admin' ? 'admin' : 'student'
+}
+
+export function profileToUser(p: UserProfile): User {
   return {
     id: String(p.id),
     email: p.email || p.username,
-    role: p.role ?? 'student',
+    role: mapRole(p.role),
     schoolId: p.school || '',
     classId: p.className || undefined,
     firstName: p.firstName,
@@ -45,13 +56,28 @@ export const authService = {
     return authService.getProfile()
   },
 
-  // Login — backend expects { username, password } where username = email
-  login: async (data: LoginInput): Promise<unknown> => {
-    const response = await axiosInstance.post('/auth/login', {
+  // Login — POST /auth/login with { email, password }
+  // Returns full response; may include user in data/user
+  login: async (data: LoginInput) => {
+    const response = await axiosInstance.post<Record<string, unknown>>('/auth/login', {
       email: data.email,
       password: data.password,
     })
     return response.data
+  },
+
+  // Extract user from login response (data.user, data, user, or root)
+  getUserFromLoginResponse: (loginData: Record<string, unknown> | null | undefined): User | null => {
+    if (!loginData) return null
+    const data = loginData.data as Record<string, unknown> | undefined
+    const raw = data?.user ?? data ?? loginData.user ?? loginData
+    const obj = typeof raw === 'object' && raw !== null ? raw : null
+    if (!obj || typeof obj !== 'object') return null
+    try {
+      return profileToUser(obj as UserProfile)
+    } catch {
+      return null
+    }
   },
 
   // Refresh token (cookie-based, no body needed)

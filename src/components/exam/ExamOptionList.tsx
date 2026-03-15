@@ -1,6 +1,6 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { ExamOption } from '@/types/exam'
 
 interface ExamOptionListProps {
@@ -23,25 +23,30 @@ export default function ExamOptionList({
             key={option.id}
             type="button"
             onClick={() => onSelect(option.id)}
-            className={`flex w-full cursor-pointer items-center gap-4 rounded-xl border-2 px-5 py-4 text-left transition-all ${
+            className={cn(
+              'flex w-full cursor-pointer items-center gap-4 rounded-xl border-2 bg-white px-5 py-4 text-left transition-all',
               isSelected
-                ? 'border-main bg-blue-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
+                ? 'border-[#00284D] bg-blue-50/50'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50',
+            )}
           >
             <div
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+              className={cn(
+                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                 isSelected
-                  ? 'border-main bg-main text-white'
-                  : 'border-gray-300 bg-white'
-              }`}
+                  ? 'border-[#00284D] bg-[#00284D]'
+                  : 'border-gray-300 bg-white',
+              )}
             >
-              {isSelected && <Check className="h-3.5 w-3.5" />}
+              {isSelected && (
+                <span className="h-2 w-2 rounded-full bg-white" />
+              )}
             </div>
             <span
-              className={`text-sm leading-relaxed ${
-                isSelected ? 'font-medium text-gray-900' : 'text-gray-700'
-              }`}
+              className={cn(
+                'text-sm leading-relaxed',
+                isSelected ? 'font-medium text-gray-900' : 'text-gray-700',
+              )}
             >
               {option.optionText}
             </span>
