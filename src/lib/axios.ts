@@ -20,12 +20,20 @@ const axiosInstance = axios.create({
   },
 })
 
+/** Request config: set to true to avoid redirect to login on 401 (caller handles error). */
+export const SKIP_AUTH_REDIRECT = 'skipAuthRedirect'
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/'
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      if ((error.config as { [SKIP_AUTH_REDIRECT]?: boolean })?.[SKIP_AUTH_REDIRECT]) {
+        // Caller will handle 401 (e.g. show message on exam page)
+      } else {
+        const path = window.location.pathname
+        if (path !== '/' && !path.startsWith('/login') && !path.startsWith('/register')) {
+          window.location.href = '/'
+        }
       }
     }
     return Promise.reject(error)

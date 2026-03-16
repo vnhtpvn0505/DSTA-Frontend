@@ -1,58 +1,82 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Flag } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ExamFooterProps {
   onPrevious: () => void
   onNext: () => void
-  onFlag: () => void
+  onClearCurrent?: () => void
+  onFlag?: () => void
   hasPrevious: boolean
   hasNext: boolean
-  isFlagged: boolean
+  hasSelection?: boolean
 }
 
 export default function ExamFooter({
   onPrevious,
   onNext,
+  onClearCurrent,
   onFlag,
   hasPrevious,
   hasNext,
-  isFlagged,
+  hasSelection = false,
 }: ExamFooterProps) {
   return (
-    <div className="sticky bottom-0 z-10 flex items-center justify-between border-t border-gray-200 bg-[#CBD5E1] px-6 py-3">
-      <Button
+    <div className="flex shrink-0 items-center justify-between bg-[#00284D] px-6 py-4">
+      <button
+        type="button"
         onClick={onPrevious}
         disabled={!hasPrevious}
-        variant="outline"
-        className="gap-1 rounded-xl border-gray-400 bg-white"
+        className={cn(
+          'inline-flex items-center gap-2 rounded-lg bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer',
+          !hasPrevious && 'cursor-not-allowed opacity-50',
+          hasPrevious && 'hover:bg-white/20',
+        )}
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className="h-5 w-5" />
         Quay lại
-      </Button>
+      </button>
 
-      <Button
-        onClick={onFlag}
-        variant="outline"
-        className={`gap-2 rounded-xl ${
-          isFlagged
-            ? 'border-safety-orange bg-safety-orange/10 text-safety-orange'
-            : 'border-safety-orange text-safety-orange bg-white'
-        }`}
-      >
-        <Flag className="h-4 w-4" />
-        Đánh dấu xem lại
-      </Button>
+      <div className="flex items-center gap-3">
+        {onClearCurrent && (
+          <button
+            type="button"
+            onClick={onClearCurrent}
+            disabled={!hasSelection}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-900 transition-colors cursor-pointer',
+              !hasSelection && 'cursor-not-allowed opacity-50',
+              hasSelection && 'hover:bg-amber-500',
+            )}
+          >
+            Chỉnh sửa làm lại
+          </button>
+        )}
+        {onFlag && (
+          <button
+            type="button"
+            onClick={onFlag}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FEF3C7] px-5 py-2.5 text-sm font-semibold text-amber-900 transition-colors hover:bg-amber-200 cursor-pointer"
+          >
+            Đánh dấu xem lại
+          </button>
+        )}
+      </div>
 
-      <Button
+      <button
+        type="button"
         onClick={onNext}
         disabled={!hasNext}
-        className="gap-1 rounded-xl bg-main text-white hover:bg-[#002244]"
+        className={cn(
+          'inline-flex items-center gap-2 rounded-lg bg-white text-[#00284D] px-5 py-2.5 text-sm font-semibold transition-colors cursor-pointer',
+          !hasNext && 'cursor-not-allowed opacity-50',
+          hasNext && 'hover:bg-gray-100',
+        )}
       >
         Câu tiếp theo
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+        <ChevronRight className="h-5 w-5" />
+      </button>
     </div>
   )
 }

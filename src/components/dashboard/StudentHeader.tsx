@@ -6,6 +6,8 @@ import { LogOut, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/auth.store'
 import { queryClient } from '@/lib/queryClient'
+import { authService } from '@/features/auth/auth.service'
+import { useMutation } from '@tanstack/react-query'
 
 export default function StudentHeader() {
   const { user } = useAuth()
@@ -27,13 +29,18 @@ export default function StudentHeader() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [open])
 
-  const handleLogout = () => {
-    setOpen(false)
-    router.replace('/')
-    setTimeout(() => {
+  const logoutMutation = useMutation({
+    mutationFn: authService.logout,
+    onSettled: () => {
       clearUser()
       queryClient.invalidateQueries({ queryKey: ['me'] })
-    }, 0)
+      router.replace('/')
+    },
+  })
+
+  const handleLogout = () => {
+    setOpen(false)
+    logoutMutation.mutate()
   }
 
   return (

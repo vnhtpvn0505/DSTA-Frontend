@@ -3,8 +3,8 @@ import { authService } from '@/features/auth/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { useEffect } from 'react';
 
-// Set to true to skip API calls (for development/testing without backend)
-const SKIP_API_AUTH_CHECK = true;
+// Set to true to skip API auth check (for dev without backend)
+const SKIP_API_AUTH_CHECK = false
 
 export const useAuth = () => {
   const { setUser, clearUser, user, isAuthenticated } = useAuthStore();
@@ -26,17 +26,15 @@ export const useAuth = () => {
 
   useEffect(() => {
     if (SKIP_API_AUTH_CHECK) {
-      // When skipping API, rely on stored user from login
-      // User will be set manually in LoginForm/RegisterForm
       return;
     }
-
+    // Sync query data → store. Only clear when no user in store (avoid race after login).
     if (data) {
       setUser(data);
-    } else if (isError) {
+    } else if (isError && !user) {
       clearUser();
     }
-  }, [data, isError, setUser, clearUser]);
+  }, [data, isError, setUser, clearUser, user]);
 
   return {
     user,

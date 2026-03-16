@@ -10,15 +10,19 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { User, Lock, Eye, EyeOff } from 'lucide-react'
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { getMockUser } from '@/utils/mockUsers'
 import { useAuthStore } from '@/stores/auth.store'
+import { translateAuthError } from './authErrors'
 import { getDefaultRouteForRole } from '@/lib/authorization'
 import { cn } from '@/lib/utils'
-
-const USE_MOCK_AUTH = true
 
 interface LoginFormProps {
   onSwitchToRegister?: () => void
@@ -48,52 +52,39 @@ export default function LoginForm({
 
   const loginMutation = useMutation({
     mutationFn: authService.login,
-    onSuccess: () => {
-      setUser({
-        id: '',
-        email: form.getValues('email') ?? '',
-        role: 'student',
-        schoolId: '',
-      })
-      queryClient.invalidateQueries({ queryKey: ['me'] })
-      router.push('/dashboard')
+    onSuccess: async (loginData) => {
+      try {
+        const userFromLogin = authService.getUserFromLoginResponse(
+          loginData as Record<string, unknown>,
+        )
+        const user = userFromLogin ?? (await authService.getProfile())
+        setUser(user)
+        queryClient.setQueryData(['me'], user)
+        router.push(getDefaultRouteForRole(user.role))
+      } catch {
+        setErrorMessage('Đăng nhập thành công nhưng không thể tải thông tin tài khoản.')
+      }
     },
     onError: (error: unknown) => {
-      setErrorMessage(
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-          'Đăng nhập thất bại. Vui lòng thử lại.',
-      )
+      const err = error as {
+        response?: { status?: number; data?: { message?: string | string[] } }
+      }
+      const res = err?.response?.data
+      const msg =
+        res?.message ?? (err?.response?.status === 401 ? 'Invalid credentials' : undefined)
+      const translated = translateAuthError(msg)
+      setErrorMessage(translated || 'Đăng nhập thất bại. Vui lòng thử lại.')
     },
   })
 
   const onSubmit = (data: LoginInput) => {
     setErrorMessage('')
-
     loginMutation.mutate(data)
-    // if (USE_MOCK_AUTH) {
-    //   const email = data.email.toLowerCase();
-    //   try {
-    //     const mockUser = email.includes('admin')
-    //       ? getMockUser('admin')
-    //       : getMockUser('student');
-    //     setUser(mockUser);
-    //     router.push(getDefaultRouteForRole(mockUser.role));
-    //   } catch {
-    //     setErrorMessage('Đăng nhập thất bại. Vui lòng thử lại.');
-    //   }
-    // } else {
-    // }
   }
 
   return (
     <div className="w-full max-w-md rounded-3xl bg-[#00284D] p-8 shadow-xl">
       <h1 className={loginTitleClass}>{isAdmin ? 'Admin Login' : 'Login'}</h1>
-
-      {USE_MOCK_AUTH && (
-        <p className="mt-2 text-center text-xs text-gray-400">
-          Test: student@test.com / admin@test.com
-        </p>
-      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5">
@@ -155,10 +146,10 @@ export default function LoginForm({
 
           <Button
             type="submit"
-            disabled={!USE_MOCK_AUTH && loginMutation.isPending}
+            disabled={loginMutation.isPending}
             className="h-12 w-full rounded-xl bg-blue-400 font-medium uppercase text-white hover:bg-blue-500"
           >
-            {!USE_MOCK_AUTH && loginMutation.isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loginMutation.isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
 
           <div
