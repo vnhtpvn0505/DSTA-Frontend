@@ -65,6 +65,21 @@ export const examService = {
   },
 
   /**
+   * GET /api/v1/exam/resume
+   * Resume an in-progress exam. Trả phiên thi đang làm dở hoặc null nếu không có.
+   */
+  resume: async (): Promise<ExamSession | null> => {
+    try {
+      const response = await axiosInstance.get<unknown>('/exam/resume', {
+        [SKIP_AUTH_REDIRECT]: true,
+      } as Record<string, unknown>)
+      return parseExamSession(response.data)
+    } catch {
+      return null
+    }
+  },
+
+  /**
    * GET /api/v1/exam/sessions/:id
    * Lấy chi tiết phiên thi theo id (để khôi phục khi sinh viên bị out giữa chừng).
    */
@@ -85,6 +100,8 @@ export const examService = {
   /**
    * POST /api/v1/exam/{id}/submit
    * Nộp bài thi và nhận kết quả. Body rỗng hoặc answerIds: [] = nộp với 0 điểm (Hủy và làm bài mới).
+   * Khi examId lấy từ body lỗi 400 (exam in progress), backend có thể trả hoặc không trả kết quả;
+   * frontend luôn parse an toàn, không trả về thì nhận { score: 0 }.
    */
   submitExam: async (
     examId: number,
@@ -107,7 +124,7 @@ export interface SubmitExamResult {
 }
 
 function parseSubmitResult(body: unknown): SubmitExamResult {
-  if (!body || typeof body !== 'object') return { score: 0 }
+  if (body == null || typeof body !== 'object') return { score: 0 }
   const obj = body as Record<string, unknown>
   const data = (obj.data as Record<string, unknown>) ?? obj
   const score = Number(data?.score ?? data?.totalScore ?? 0)
@@ -115,6 +132,6 @@ function parseSubmitResult(body: unknown): SubmitExamResult {
     score: Number.isFinite(score) ? score : 0,
     totalScore: Number(data?.totalScore) || undefined,
     passed: Boolean(data?.passed),
-    message: String(data?.message ?? obj?.message ?? ''),
+    message: typeof data?.message === 'string' ? data.message : String(obj?.message ?? ''),
   }
 }

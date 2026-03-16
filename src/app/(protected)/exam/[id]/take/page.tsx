@@ -3,12 +3,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import ExamQuestionNav from '@/components/exam/ExamQuestionNav'
 import ExamHeader from '@/components/exam/ExamHeader'
 import ExamOptionList from '@/components/exam/ExamOptionList'
 import ExamFooter from '@/components/exam/ExamFooter'
 import { examService } from '@/features/exam/exam.service'
+import type { SubmitExamResult } from '@/features/exam/exam.service'
 import type { ExamSession } from '@/types/exam'
 
 export default function TakeExamPage() {
@@ -23,7 +33,21 @@ export default function TakeExamPage() {
   const [flagged, setFlagged] = useState<Set<number>>(new Set())
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submitResult, setSubmitResult] = useState<SubmitExamResult | null>(null)
+  const [showResultPopup, setShowResultPopup] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const sessionRef = useRef<ExamSession | null>(null)
+  const answersRef = useRef<Record<number, number>>({})
+  const prevNextRef = useRef<{
+    goPrev: () => void
+    goNext: () => void
+    preventShortcuts: boolean
+  }>({ goPrev: () => {}, goNext: () => {}, preventShortcuts: true })
+
+  sessionRef.current = session
+  answersRef.current = answers
 
   useEffect(() => {
     let cancelled = false
@@ -91,10 +115,60 @@ export default function TakeExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
-  const handleSubmit = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    sessionStorage.removeItem('examSession')
-    // TODO: POST answers to API
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const { goPrev, goNext, preventShortcuts } = prevNextRef.current
+      if (preventShortcuts) return
+      const target = e.target as HTMLElement
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      ) {
+        return
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goPrev()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        goNext()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const handleSubmit = useCallback(async () => {
+    const s = sessionRef.current
+    if (!s || !Number.isFinite(examId)) return
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    setShowSubmitConfirm(false)
+    setSubmitError('')
+    setSubmitting(true)
+    try {
+      const ans = answersRef.current
+      const answerIds = s.questions
+        .map((_, i) => ans[i])
+        .filter((id): id is number => id != null)
+      const result = await examService.submitExam(examId, { answerIds })
+      sessionStorage.removeItem('examSession')
+      setSubmitResult(result)
+      setShowResultPopup(true)
+    } catch {
+      setSubmitError('Không thể nộp bài. Vui lòng kiểm tra kết nối và thử lại.')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [examId])
+
+  const handleCloseResultPopup = useCallback(() => {
+    setShowResultPopup(false)
+    setSubmitResult(null)
     router.push('/certificate')
   }, [router])
 
@@ -134,6 +208,20 @@ export default function TakeExamPage() {
     })
   }
 
+  const handleFlag = () => {
+    setFlagged((prev) => {
+      const next = new Set(prev)
+      if (next.has(currentIndex)) next.delete(currentIndex)
+      else next.add(currentIndex)
+      return next
+    })
+  }
+
+  prevNextRef.current.goPrev = handlePrev
+  prevNextRef.current.goNext = handleNext
+  prevNextRef.current.preventShortcuts =
+    showSubmitConfirm || showResultPopup || !!submitError
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F5F7FA]">
       {/* Header: Assessment title + timer + user */}
@@ -141,6 +229,8 @@ export default function TakeExamPage() {
         questionNumber={currentIndex + 1}
         timeRemaining={timeRemaining}
         isCritical={isCritical}
+        onNext={handleNext}
+        hasNext={currentIndex < total - 1}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -182,6 +272,7 @@ export default function TakeExamPage() {
             onPrevious={handlePrev}
             onNext={handleNext}
             onClearCurrent={handleClearCurrent}
+            onFlag={handleFlag}
             hasPrevious={currentIndex > 0}
             hasNext={currentIndex < total - 1}
             hasSelection={hasSelection}
@@ -191,14 +282,101 @@ export default function TakeExamPage() {
 
       <ConfirmDialog
         open={showSubmitConfirm}
-        onOpenChange={setShowSubmitConfirm}
+        onOpenChange={(open) => {
+          if (!submitting) setShowSubmitConfirm(open)
+        }}
         title="Xác nhận nộp bài"
         description={`Bạn đã trả lời ${answeredSet.size}/${total} câu hỏi. Bạn có chắc chắn muốn nộp bài?`}
         confirmText="Nộp bài"
         cancelText="Hủy"
         onConfirm={handleSubmit}
         variant="default"
+        isLoading={submitting}
       />
+
+      {/* Popup kết quả từ API POST /exam/{id}/submit */}
+      <Dialog open={showResultPopup} onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Kết quả bài thi</DialogTitle>
+            <DialogDescription className="sr-only">
+              Điểm số và trạng thái đạt/chưa đạt từ bài thi vừa nộp
+            </DialogDescription>
+          </DialogHeader>
+          {submitResult && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-baseline justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Điểm số
+                </span>
+                <span className="text-2xl font-bold tabular-nums text-foreground">
+                  {submitResult.score ?? 0}
+                  {submitResult.totalScore != null && (
+                    <span className="ml-1 text-lg font-normal text-muted-foreground">
+                      / {submitResult.totalScore}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Kết quả
+                </span>
+                <span
+                  className={
+                    submitResult.passed
+                      ? 'font-semibold text-green-600 dark:text-green-400'
+                      : 'font-semibold text-amber-600 dark:text-amber-400'
+                  }
+                >
+                  {submitResult.passed ? 'Đạt' : 'Chưa đạt'}
+                </span>
+              </div>
+              {submitResult.message && (
+                <p className="text-sm text-muted-foreground">
+                  {submitResult.message}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={handleCloseResultPopup}>Xem chứng chỉ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lỗi nộp bài */}
+      <Dialog
+        open={!!submitError}
+        onOpenChange={(open) => !open && setSubmitError('')}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Không thể nộp bài</DialogTitle>
+            <DialogDescription>{submitError}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubmitError('')}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {submitting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm font-medium text-muted-foreground">
+              Đang nộp bài...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

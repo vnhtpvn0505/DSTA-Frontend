@@ -116,13 +116,10 @@ export default function ExamPage() {
         if (examId != null) {
           try {
             await examService.submitExam(examId)
-            return handleStart(true)
           } catch {
-            setError(ABANDON_ERROR_MSG)
-            setExamInProgress(true)
-            setCurrentExamId(examId)
+            // Bài có thể đã nộp rồi (đã hoàn thành) — vẫn thử gọi generate lại
           }
-          return
+          return handleStart(true)
         }
         setError(
           'Không thể reset bài thi cũ. Vui lòng liên hệ quản trị hoặc thử đăng nhập lại.',
@@ -146,7 +143,7 @@ export default function ExamPage() {
     setError('')
     setLoading(true)
     try {
-      const session = await examService.getCurrentSession()
+      const session = await examService.resume()
       if (session) {
         sessionStorage.setItem('examSession', JSON.stringify(session))
         router.push(`/exam/${session.id}/take`)

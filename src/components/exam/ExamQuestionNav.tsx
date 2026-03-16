@@ -11,6 +11,9 @@ interface ExamQuestionNavProps {
   onSubmit: () => void
 }
 
+const COLS = 5
+const CELL_SIZE = 36
+
 export default function ExamQuestionNav({
   total,
   current,
@@ -19,18 +22,19 @@ export default function ExamQuestionNav({
   onSelect,
   onSubmit,
 }: ExamQuestionNavProps) {
-  const cols = 5
-
   return (
-    <aside className="flex h-full w-[200px] shrink-0 flex-col border-r border-gray-200 bg-white">
+    <aside className="flex h-full w-[244px] shrink-0 flex-col border-r border-gray-200 bg-gray-50">
       <div className="px-4 pt-6 pb-4">
         <h3 className="text-sm font-bold text-gray-900">Danh sách câu hỏi</h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-4">
         <div
-          className="grid gap-2"
-          style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+          className="grid gap-2 w-full"
+          style={{
+            gridTemplateColumns: `repeat(${COLS}, ${CELL_SIZE}px)`,
+            justifyContent: 'start',
+          }}
         >
           {Array.from({ length: total }, (_, i) => {
             const isCurrent = i === current
@@ -42,10 +46,11 @@ export default function ExamQuestionNav({
                 type="button"
                 onClick={() => onSelect(i)}
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors cursor-pointer',
-                  isCurrent && 'bg-emerald-500 text-white ring-2 ring-emerald-600 ring-offset-2',
-                  isAnswered && !isCurrent && 'bg-blue-100 text-blue-800 border border-blue-200',
-                  !isCurrent && !isAnswered && 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200',
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors cursor-pointer',
+                  isCurrent && 'bg-[#00284D] text-white',
+                  isAnswered && !isCurrent && 'bg-emerald-500 text-white',
+                  !isCurrent && !isAnswered &&
+                    'bg-white text-gray-600 border border-gray-300 hover:border-gray-400',
                 )}
               >
                 {i + 1}
@@ -59,7 +64,7 @@ export default function ExamQuestionNav({
         <button
           type="button"
           onClick={onSubmit}
-          className="w-full rounded-xl bg-sky-100 py-3 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-200 cursor-pointer"
+          className="w-full rounded-lg border-2 border-sky-300 bg-sky-50 py-3 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-100 cursor-pointer"
         >
           Nộp bài thi
         </button>
