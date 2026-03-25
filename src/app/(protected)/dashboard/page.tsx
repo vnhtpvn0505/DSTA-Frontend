@@ -113,9 +113,3 @@ function StudentDashboard({ user }: { user: ReturnType<typeof useAuth>['user'] }
   )
 }
 
-      />
-
-      <StudentRadarChart data={competencyDomainsMock} />
-    </div>
-  )
-}
