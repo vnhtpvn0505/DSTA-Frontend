@@ -1,6 +1,16 @@
 import axiosInstance, { SKIP_AUTH_REDIRECT } from '@/lib/axios'
 import type { ExamSession } from '@/types/exam'
 
+export interface ExamHistoryItem {
+  id: number
+  score: number
+  totalPoints: number
+  rankName: string
+  isPassed: boolean
+  startedAt: string
+  finishedAt: string
+}
+
 export interface GenerateExamParams {
   categoryId: number
   numberOfQuestions: number
@@ -113,6 +123,20 @@ export const examService = {
       { [SKIP_AUTH_REDIRECT]: true } as Record<string, unknown>,
     )
     return parseSubmitResult(response.data)
+  },
+
+  /**
+   * GET /api/v1/exam/history
+   * Lấy lịch sử các bài thi đã hoàn thành của user hiện tại.
+   */
+  getHistory: async (): Promise<ExamHistoryItem[]> => {
+    const response = await axiosInstance.get<{ code: number; data: ExamHistoryItem[] }>(
+      '/exam/history',
+      { [SKIP_AUTH_REDIRECT]: true } as Record<string, unknown>,
+    )
+    const body = response.data as unknown as { data?: unknown }
+    const items = body?.data
+    return Array.isArray(items) ? (items as ExamHistoryItem[]) : []
   },
 }
 
