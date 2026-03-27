@@ -70,6 +70,35 @@ function rawToUser(raw: Record<string, unknown>): User | null {
   }
 }
 
+function findAccessTokenDeep(value: unknown, depth = 0): string | null {
+  if (value == null || depth > 4) return null
+  if (typeof value === 'string') return null
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findAccessTokenDeep(item, depth + 1)
+      if (found) return found
+    }
+    return null
+  }
+  if (typeof value !== 'object') return null
+
+  const obj = value as Record<string, unknown>
+  const direct =
+    obj.accessToken ??
+    obj.access_token ??
+    obj.token ??
+    obj.jwt ??
+    obj.idToken ??
+    obj.id_token
+  if (direct != null && String(direct).trim() !== '') return String(direct)
+
+  for (const v of Object.values(obj)) {
+    const found = findAccessTokenDeep(v, depth + 1)
+    if (found) return found
+  }
+  return null
+}
+
 export function profileToUser(p: UserProfile): User {
   return {
     id: String(p.id),
@@ -130,15 +159,7 @@ export const authService = {
     // If backend returns access token in body (JWT/Bearer), persist it for axios interceptor.
     if (typeof window !== 'undefined') {
       const raw = response.data as Record<string, unknown>
-      const candidate =
-        raw?.accessToken ??
-        raw?.access_token ??
-        raw?.token ??
-        raw?.jwt ??
-        (raw?.data as Record<string, unknown> | undefined)?.accessToken ??
-        (raw?.data as Record<string, unknown> | undefined)?.access_token ??
-        (raw?.data as Record<string, unknown> | undefined)?.token ??
-        (raw?.data as Record<string, unknown> | undefined)?.jwt
+      const candidate = findAccessTokenDeep(raw)
       if (candidate != null) {
         window.localStorage.setItem('vnt-access-token', String(candidate))
       }

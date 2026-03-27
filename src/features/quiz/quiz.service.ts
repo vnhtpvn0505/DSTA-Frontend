@@ -1,4 +1,5 @@
 import axiosInstance, { SKIP_AUTH_REDIRECT } from '@/lib/axios'
+import { authService } from '@/features/auth/auth.service'
 import type {
   ExamQuestion,
   ExamOption,
@@ -68,6 +69,19 @@ export interface GetQuestionsResult {
   currentPage: number
 }
 
+async function withAuthRetry<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request()
+  } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 401) {
+      await authService.refresh()
+      return await request()
+    }
+    throw err
+  }
+}
+
 export const quizService = {
   /**
    * GET /api/v1/quiz/questions
@@ -80,11 +94,12 @@ export const quizService = {
     const queryParams: Record<string, number> = { page, limit }
     if (categoryId != null) queryParams.categoryId = categoryId
 
-    const response =
-      await axiosInstance.get<QuizQuestionsPaginatedResponse>(
+    const response = await withAuthRetry(() =>
+      axiosInstance.get<QuizQuestionsPaginatedResponse>(
         '/quiz/questions',
         { params: queryParams },
-      )
+      ),
+    )
 
     const data = response.data as Record<string, unknown>
     let items: QuizQuestion[] = []
@@ -160,7 +175,7 @@ export const quizService = {
    * Lấy danh sách danh mục (miền năng lực)
    */
   getCategories: async () => {
-    const response = await axiosInstance.get<unknown>('/quiz/categories')
+    const response = await withAuthRetry(() => axiosInstance.get<unknown>('/quiz/categories'))
     const data = response.data
     // Hỗ trợ format: { data: { categories: [...] } }, array, { content }, { items }, ...
     let list: unknown[] = []
