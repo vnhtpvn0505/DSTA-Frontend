@@ -1,4 +1,5 @@
 import axiosInstance from '@/lib/axios'
+import { clearDevAccessToken } from '@/lib/auth-token'
 import type { User, UserProfile } from '@/types/user'
 import type { LoginInput, RegisterInput } from './auth.schema'
 
@@ -80,6 +81,15 @@ export const authService = {
     }
   },
 
+  getAccessTokenFromLoginResponse: (
+    loginData: Record<string, unknown> | null | undefined
+  ): string | null => {
+    if (!loginData) return null
+    const data = loginData.data as Record<string, unknown> | undefined
+    const token = data?.accessToken ?? loginData.accessToken
+    return typeof token === 'string' && token.length > 0 ? token : null
+  },
+
   // Refresh token (cookie-based, no body needed)
   refresh: async (): Promise<void> => {
     await axiosInstance.post('/auth/refresh')
@@ -124,6 +134,10 @@ export const authService = {
 
   // Logout
   logout: async (): Promise<void> => {
-    await axiosInstance.post('/auth/logout');
+    try {
+      await axiosInstance.post('/auth/logout')
+    } finally {
+      clearDevAccessToken()
+    }
   },
 };

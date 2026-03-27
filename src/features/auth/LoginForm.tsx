@@ -23,6 +23,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { translateAuthError } from './authErrors'
 import { getDefaultRouteForRole } from '@/lib/authorization'
 import { cn } from '@/lib/utils'
+import { setDevAccessToken } from '@/lib/auth-token'
 
 interface LoginFormProps {
   onSwitchToRegister?: () => void
@@ -54,6 +55,13 @@ export default function LoginForm({
     mutationFn: authService.login,
     onSuccess: async (loginData) => {
       try {
+        const token = authService.getAccessTokenFromLoginResponse(
+          loginData as Record<string, unknown>,
+        )
+        if (token) {
+          setDevAccessToken(token)
+        }
+
         const userFromLogin = authService.getUserFromLoginResponse(
           loginData as Record<string, unknown>,
         )

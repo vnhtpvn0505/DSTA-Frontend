@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getDevAccessToken, isLocalDebugHost } from '@/lib/auth-token'
 
 const resolveBaseURL = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -22,6 +23,24 @@ const axiosInstance = axios.create({
 
 /** Request config: set to true to avoid redirect to login on 401 (caller handles error). */
 export const SKIP_AUTH_REDIRECT = 'skipAuthRedirect'
+
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window === 'undefined' || !isLocalDebugHost()) {
+    return config
+  }
+
+  const token = getDevAccessToken()
+  if (!token) {
+    return config
+  }
+
+  config.headers = config.headers || {}
+  if (!('Authorization' in config.headers)) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+
+  return config
+})
 
 axiosInstance.interceptors.response.use(
   (response) => response,
