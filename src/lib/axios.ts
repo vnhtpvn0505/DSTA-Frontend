@@ -23,6 +23,23 @@ const axiosInstance = axios.create({
 /** Request config: set to true to avoid redirect to login on 401 (caller handles error). */
 export const SKIP_AUTH_REDIRECT = 'skipAuthRedirect'
 
+const ACCESS_TOKEN_STORAGE_KEY = 'vnt-access-token'
+
+// If backend uses Authorization header (JWT/Bearer) instead of cookies,
+// attach token automatically when present in localStorage.
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
+    if (token) {
+      // Axios types are strict; cast to keep runtime behavior.
+      const headers = { ...(config.headers as any) }
+      headers.Authorization = `Bearer ${token}`
+      config.headers = headers as any
+    }
+  }
+  return config
+})
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -85,6 +85,22 @@ export const authService = {
       email: data.email,
       password: data.password,
     })
+    // If backend returns access token in body (JWT/Bearer), persist it for axios interceptor.
+    if (typeof window !== 'undefined') {
+      const raw = response.data as Record<string, unknown>
+      const candidate =
+        raw?.accessToken ??
+        raw?.access_token ??
+        raw?.token ??
+        raw?.jwt ??
+        (raw?.data as Record<string, unknown> | undefined)?.accessToken ??
+        (raw?.data as Record<string, unknown> | undefined)?.access_token ??
+        (raw?.data as Record<string, unknown> | undefined)?.token ??
+        (raw?.data as Record<string, unknown> | undefined)?.jwt
+      if (candidate != null) {
+        window.localStorage.setItem('vnt-access-token', String(candidate))
+      }
+    }
     return response.data
   },
 
