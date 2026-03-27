@@ -1,4 +1,4 @@
-import axiosInstance from '@/lib/axios'
+import axiosInstance, { SKIP_AUTH_REDIRECT } from '@/lib/axios'
 import type { User, UserProfile } from '@/types/user'
 import type { LoginInput, RegisterInput } from './auth.schema'
 
@@ -46,9 +46,31 @@ export function profileToUser(p: UserProfile): User {
 export const authService = {
   // Get user profile (after login, cookie-based)
   getProfile: async (): Promise<User> => {
-    const response = await axiosInstance.get<{ data: UserProfile }>('/user/profile')
-    const profile = response.data.data ?? response.data
-    return profileToUser(profile as UserProfile)
+    const getProfileOnce = async (): Promise<User> => {
+      const response = await axiosInstance.get<{ data: UserProfile }>(
+        '/user/profile',
+        {
+          // Prevent global 401 redirect so we can handle refresh/retry here
+          [SKIP_AUTH_REDIRECT]: true,
+        } as Parameters<typeof axiosInstance.get>[1],
+      )
+      const profile = response.data.data ?? response.data
+      return profileToUser(profile as UserProfile)
+    }
+
+    try {
+      return await getProfileOnce()
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      // If access session is expired, try refresh cookie/token then retry once.
+      if (status === 401) {
+        await axiosInstance.post('/auth/refresh', undefined, {
+          [SKIP_AUTH_REDIRECT]: true,
+        } as Parameters<typeof axiosInstance.post>[2])
+        return await getProfileOnce()
+      }
+      throw err
+    }
   },
 
   // Alias for useAuth hook compatibility
@@ -82,7 +104,9 @@ export const authService = {
 
   // Refresh token (cookie-based, no body needed)
   refresh: async (): Promise<void> => {
-    await axiosInstance.post('/auth/refresh')
+    await axiosInstance.post('/auth/refresh', undefined, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Parameters<typeof axiosInstance.post>[2])
   },
 
   // Register

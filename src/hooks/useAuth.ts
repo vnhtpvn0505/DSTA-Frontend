@@ -21,7 +21,10 @@ export const useAuth = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     // Skip API call if SKIP_API_AUTH_CHECK is true
-    enabled: !SKIP_API_AUTH_CHECK,
+    // Only fetch profile when we don't already have an authenticated user in the store.
+    // This avoids clearing the user on transient 401s (e.g. cookie not ready yet),
+    // while still enforcing auth on first load / refresh.
+    enabled: !SKIP_API_AUTH_CHECK && !isAuthenticated,
   });
 
   useEffect(() => {

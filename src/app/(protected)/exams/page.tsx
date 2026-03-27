@@ -24,7 +24,7 @@ const PAGE_SIZE = 10
 export default function ExamsPage() {
   const [activeTab, setActiveTab] = useState<ExamTab>('questions')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(1)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createCategoryDialogOpen, setCreateCategoryDialogOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -36,15 +36,21 @@ export default function ExamsPage() {
   })
   const categories = categoriesData ?? []
 
+  useEffect(() => {
+    if (selectedCategoryId == null && categories.length > 0) {
+      setSelectedCategoryId(categories[0].id)
+    }
+  }, [categories, selectedCategoryId])
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['quiz-questions', selectedCategoryId, currentPage],
     queryFn: () =>
       quizService.getQuestions({
-        ...(selectedCategoryId != null && { categoryId: selectedCategoryId }),
+        categoryId: selectedCategoryId as number,
         page: currentPage,
         limit: PAGE_SIZE,
       }),
-    enabled: activeTab === 'questions',
+    enabled: activeTab === 'questions' && selectedCategoryId != null,
   })
 
   const questionRows = data?.items ?? []
@@ -74,7 +80,7 @@ export default function ExamsPage() {
   const handleAddQuestion = () => setCreateDialogOpen(true)
 
   const handleCategoryChange = (value: string) => {
-    const id = value === '' ? null : Number(value)
+    const id = Number(value)
     setSelectedCategoryId(id)
     setCurrentPage(1)
   }
@@ -146,7 +152,6 @@ export default function ExamsPage() {
               onChange={(e) => handleCategoryChange(e.target.value)}
               className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-[#00284D] focus:outline-none focus:ring-1 focus:ring-[#00284D]"
             >
-              <option value="">Tất cả</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
