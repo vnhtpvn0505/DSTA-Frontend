@@ -66,6 +66,9 @@ export default function LoginForm({
           loginData as Record<string, unknown>,
         )
         const user = userFromLogin ?? (await authService.getProfile())
+        // Cancel any in-flight getMe query so a stale 401 response
+        // cannot clear the store after we've just set the user.
+        await queryClient.cancelQueries({ queryKey: ['me'] })
         setUser(user)
         queryClient.setQueryData(['me'], user)
         router.push(getDefaultRouteForRole(user.role))
