@@ -47,10 +47,13 @@ export function profileToUser(p: UserProfile): User {
 export const authService = {
   // Get user profile (after login, cookie-based)
   getProfile: async (): Promise<User> => {
-    const response = await axiosInstance.get<{ data: UserProfile }>('/user/profile', {
+    const response = await axiosInstance.get('/user/profile', {
       [SKIP_AUTH_REDIRECT]: true,
     } as Parameters<typeof axiosInstance.get>[1])
-    const profile = response.data.data ?? response.data
+    const responseData = response.data as Record<string, unknown>
+    const inner = responseData?.data as Record<string, unknown> | undefined
+    // Backend returns { data: { user: UserProfile } }
+    const profile = inner?.user ?? inner ?? responseData
     return profileToUser(profile as UserProfile)
   },
 

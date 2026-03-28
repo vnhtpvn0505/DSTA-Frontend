@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getDevAccessToken, isLocalDebugHost } from '@/lib/auth-token'
+import { getDevAccessToken, isLocalDebugHost, clearDevAccessToken } from '@/lib/auth-token'
 import { useAuthStore } from '@/stores/auth.store'
 
 const resolveBaseURL = () => {
@@ -52,8 +52,9 @@ axiosInstance.interceptors.response.use(
       } else {
         const path = window.location.pathname
         if (path !== '/' && !path.startsWith('/login') && !path.startsWith('/register')) {
-          // Clear store before redirecting so home page doesn't loop back
+          // Clear store AND dev token before redirecting
           useAuthStore.getState().clearUser()
+          clearDevAccessToken()
           window.location.href = '/'
         }
       }

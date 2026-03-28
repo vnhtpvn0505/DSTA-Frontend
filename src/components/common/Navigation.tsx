@@ -36,7 +36,8 @@ export default function Navigation() {
     mutationFn: authService.logout,
     onSettled: () => {
       clearUser();
-      queryClient.invalidateQueries({ queryKey: ['me'] });
+      queryClient.cancelQueries({ queryKey: ['me'] });
+      queryClient.removeQueries({ queryKey: ['me'] });
       router.replace('/');
     },
   });

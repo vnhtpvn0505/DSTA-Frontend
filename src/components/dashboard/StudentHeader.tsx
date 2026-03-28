@@ -33,7 +33,8 @@ export default function StudentHeader() {
     mutationFn: authService.logout,
     onSettled: () => {
       clearUser()
-      queryClient.invalidateQueries({ queryKey: ['me'] })
+      queryClient.cancelQueries({ queryKey: ['me'] })
+      queryClient.removeQueries({ queryKey: ['me'] })
       router.replace('/')
     },
   })
