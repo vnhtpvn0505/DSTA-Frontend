@@ -1,4 +1,4 @@
-import axiosInstance from '@/lib/axios'
+import axiosInstance, { SKIP_AUTH_REDIRECT } from '@/lib/axios'
 import { clearDevAccessToken } from '@/lib/auth-token'
 import type { User, UserProfile } from '@/types/user'
 import type { LoginInput, RegisterInput } from './auth.schema'
@@ -47,7 +47,9 @@ export function profileToUser(p: UserProfile): User {
 export const authService = {
   // Get user profile (after login, cookie-based)
   getProfile: async (): Promise<User> => {
-    const response = await axiosInstance.get<{ data: UserProfile }>('/user/profile')
+    const response = await axiosInstance.get<{ data: UserProfile }>('/user/profile', {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Parameters<typeof axiosInstance.get>[1])
     const profile = response.data.data ?? response.data
     return profileToUser(profile as UserProfile)
   },
