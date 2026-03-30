@@ -1,13 +1,16 @@
 import axios from 'axios'
-import { getDevAccessToken, clearDevAccessToken } from '@/lib/auth-token'
+import { getDevAccessToken, isLocalDebugHost, clearDevAccessToken } from '@/lib/auth-token'
 import { useAuthStore } from '@/stores/auth.store'
 
 const resolveBaseURL = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL
   }
-  // Fallback to known backend URL — do NOT use window.location.origin as that
-  // points to the frontend host (breaks on Vercel where FE and BE are different domains)
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api/v1`
+  }
+
   return 'http://220.231.94.117:8081/api/v1'
 }
 
@@ -23,19 +26,18 @@ const axiosInstance = axios.create({
 export const SKIP_AUTH_REDIRECT = 'skipAuthRedirect'
 
 axiosInstance.interceptors.request.use((config) => {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || !isLocalDebugHost()) {
     return config
   }
 
-  // Attach stored access token as Bearer on ALL environments.
-  // On localhost cookies also work; on cross-domain (Vercel → HTTP backend)
-  // cookies are blocked by the browser so the Bearer header is the only option.
   const token = getDevAccessToken()
-  if (token) {
-    config.headers = config.headers || {}
-    if (!('Authorization' in config.headers)) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+  if (!token) {
+    return config
+  }
+
+  config.headers = config.headers || {}
+  if (!('Authorization' in config.headers)) {
+    config.headers.Authorization = `Bearer ${token}`
   }
 
   return config
