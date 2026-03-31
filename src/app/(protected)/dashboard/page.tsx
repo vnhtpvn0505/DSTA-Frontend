@@ -9,7 +9,6 @@ import RecentExamsTable from '@/components/dashboard/RecentExamsTable'
 import StudentProfileCard from '@/components/dashboard/StudentProfileCard'
 import StudentStatsRow from '@/components/dashboard/StudentStatsRow'
 import StudentRadarChart from '@/components/dashboard/StudentRadarChart'
-import { levelDistributionMock, recentExamsMock } from '@/data/dashboardMock'
 import { userService } from '@/features/user/user.service'
 import { useQuery } from '@tanstack/react-query'
 import type { RecentExamRow } from '@/types/dashboard'
@@ -31,6 +30,16 @@ function AdminDashboard() {
     queryFn: userService.getAdminStats,
   })
 
+  const { data: recentExams = [] } = useQuery({
+    queryKey: ['recent-exams'],
+    queryFn: () => userService.getRecentExams(10),
+  })
+
+  const { data: levelDistribution = [] } = useQuery({
+    queryKey: ['level-distribution'],
+    queryFn: userService.getLevelDistribution,
+  })
+
   const statCards = adminStats
     ? [
         { title: 'Tổng sinh viên', value: adminStats.totalStudents, subtitle: '' },
@@ -49,6 +58,19 @@ function AdminDashboard() {
     { name: 'Đạt', value: passedCount, percent: adminStats?.passRate ?? 0, color: '#22c55e' },
     { name: 'Chưa đạt', value: failedCount, percent: 100 - (adminStats?.passRate ?? 0), color: '#ef4444' },
   ]
+
+  const recentExamRows: RecentExamRow[] = recentExams.map((item) => ({
+    id: String(item.id),
+    studentName: item.studentName,
+    studentEmail: item.studentEmail,
+    studentId: item.studentId,
+    completedAt: item.completedAt
+      ? new Date(item.completedAt).toLocaleString('vi-VN')
+      : '—',
+    score: item.score,
+    level: item.rankLevel,
+    result: item.isPassed ? 'PASS' : 'FAIL',
+  }))
 
   const handleViewExam = (row: RecentExamRow) => {
     console.log('View exam:', row.id)
@@ -69,12 +91,12 @@ function AdminDashboard() {
       <section className="mb-8">
         <div className="grid gap-6 lg:grid-cols-2">
           <ResultDonutChart data={resultDistribution} />
-          <LevelBarChart data={levelDistributionMock} />
+          <LevelBarChart data={levelDistribution.length > 0 ? levelDistribution : []} />
         </div>
       </section>
 
       <section>
-        <RecentExamsTable data={recentExamsMock} onView={handleViewExam} />
+        <RecentExamsTable data={recentExamRows} onView={handleViewExam} />
       </section>
     </div>
   )

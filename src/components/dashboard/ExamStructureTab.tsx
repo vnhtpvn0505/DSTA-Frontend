@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { Pencil, Trash2, Save, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { quizService } from '@/features/quiz/quiz.service'
+import type { ExamConfig } from '@/types/quiz'
 
 /**
  * Cấu trúc đề thi — UI theo Figma DSAT (node-id=463-7631).
@@ -78,6 +81,7 @@ function parseRow(row: DistributionRow): [number, number, number, number] {
 }
 
 export default function ExamStructureTab() {
+  const queryClient = useQueryClient()
   const [examMode, setExamMode] = useState<ExamMode>('standard')
   const [editMcq, setEditMcq] = useState(false)
   const [editPractical, setEditPractical] = useState(false)
@@ -97,6 +101,65 @@ export default function ExamStructureTab() {
     { id: '1', name: 'Câu 1', level: 'Mức Vận dụng', ratioPercent: 40, actualScore: 160 },
     { id: '2', name: 'Câu 2', level: 'Mức Sáng tạo', ratioPercent: 60, actualScore: 240 },
   ])
+
+  // Track the config currently loaded from the server
+  const [selectedConfigId, setSelectedConfigId] = useState<number | null>(null)
+  const [configName, setConfigName] = useState('Đề chuẩn')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const saveStatusTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Load existing configs from API
+  const { data: existingConfigs = [] } = useQuery<ExamConfig[]>({
+    queryKey: ['exam-configs'],
+    queryFn: quizService.getExamConfigs,
+  })
+
+  // Populate local state from the first active config (runs once when configs arrive)
+  const configsApplied = useRef(false)
+  useEffect(() => {
+    if (configsApplied.current || existingConfigs.length === 0) return
+    configsApplied.current = true
+    const active = existingConfigs.find((c) => c.isActive) ?? existingConfigs[0]
+    if (!active) return
+    setSelectedConfigId(active.id)
+    setConfigName(active.name)
+    setExamMode(active.examMode)
+    setGeneralConfig(active.generalConfig)
+    setWeightConfig(active.weights)
+    setDistribution(active.distribution)
+    setPracticalQuestions(active.practicalQuestions)
+  }, [existingConfigs])
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const dto = {
+        name: configName || 'Cấu hình đề thi',
+        examMode,
+        generalConfig,
+        distribution,
+        weights: weightConfig,
+        practicalQuestions,
+        isActive: true,
+      }
+      if (selectedConfigId != null) {
+        return quizService.updateExamConfig(selectedConfigId, dto)
+      }
+      return quizService.createExamConfig(dto)
+    },
+    onSuccess: (saved) => {
+      setSelectedConfigId(saved.id)
+      queryClient.invalidateQueries({ queryKey: ['exam-configs'] })
+      setSaveStatus('saved')
+      if (saveStatusTimeout.current) clearTimeout(saveStatusTimeout.current)
+      saveStatusTimeout.current = setTimeout(() => setSaveStatus('idle'), 3000)
+    },
+    onError: () => {
+      setSaveStatus('error')
+      if (saveStatusTimeout.current) clearTimeout(saveStatusTimeout.current)
+      saveStatusTimeout.current = setTimeout(() => setSaveStatus('idle'), 3000)
+    },
+  })
 
   const isStandard = examMode === 'standard'
 
@@ -206,7 +269,7 @@ export default function ExamStructureTab() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Chế độ đề thi — thanh gọn như Figma, không chiếm card riêng */}
+      {/* Chế độ đề thi + Tên cấu hình + Nút lưu */}
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <span className="text-sm font-medium text-gray-700">Chế độ đề thi:</span>
         <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
@@ -232,6 +295,39 @@ export default function ExamStructureTab() {
           >
             Tùy chỉnh
           </button>
+        </div>
+
+        {/* Config name + save */}
+        <div className="ml-auto flex items-center gap-3">
+          <Input
+            type="text"
+            value={configName}
+            onChange={(e) => setConfigName(e.target.value)}
+            placeholder="Tên cấu hình..."
+            className="h-9 w-44 rounded-lg border-gray-200 text-sm"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => { setSaveStatus('saving'); saveMutation.mutate() }}
+            disabled={saveMutation.isPending}
+            className="h-9 gap-1.5 bg-main hover:bg-main/90 text-white"
+          >
+            {saveStatus === 'saved' ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Đã lưu
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                {saveMutation.isPending ? 'Đang lưu...' : 'Lưu cấu hình'}
+              </>
+            )}
+          </Button>
+          {saveStatus === 'error' && (
+            <span className="text-xs text-red-500">Lưu thất bại</span>
+          )}
         </div>
       </div>
 

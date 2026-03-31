@@ -45,3 +45,55 @@ export interface QuizQuestionsPaginatedResponse {
   totalPages?: number
   content?: QuizQuestion[]
 }
+
+// ─── Exam Config types ──────────────────────────────────────────────────────
+
+export type ExamMode = 'standard' | 'dynamic'
+
+export interface ExamGeneralConfig {
+  totalMultipleChoice: number
+  totalEssay: number
+  durationMinutes: number
+}
+
+export interface ExamWeightConfig {
+  level1: number
+  level2: number
+  level3: number
+  level4: number
+}
+
+export interface ExamPracticalQuestion {
+  id: string
+  name: string
+  level: string
+  ratioPercent: number
+  actualScore: number
+}
+
+export interface ExamConfig {
+  id: number
+  name: string
+  description: string | null
+  examMode: ExamMode
+  generalConfig: ExamGeneralConfig
+  distribution: Record<string, [string, string, string, string]>
+  weights: ExamWeightConfig
+  practicalQuestions: ExamPracticalQuestion[]
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateExamConfigDto {
+  name: string
+  description?: string
+  examMode: ExamMode
+  generalConfig: ExamGeneralConfig
+  distribution: Record<string, [string, string, string, string]>
+  weights: ExamWeightConfig
+  practicalQuestions: ExamPracticalQuestion[]
+  isActive?: boolean
+}
+
+export type UpdateExamConfigDto = Partial<CreateExamConfigDto>

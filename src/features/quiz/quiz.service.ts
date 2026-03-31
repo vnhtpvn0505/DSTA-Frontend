@@ -9,6 +9,9 @@ import type {
   QuizQuestion,
   QuizQuestionsResponse,
   QuizQuestionsPaginatedResponse,
+  ExamConfig,
+  CreateExamConfigDto,
+  UpdateExamConfigDto,
 } from '@/types/quiz'
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -259,5 +262,56 @@ export const quizService = {
       startedAt,
       createdAt: startedAt,
     }
+  },
+
+  // ─── Exam Config API ────────────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/quiz/exam-configs
+   * Lấy tất cả cấu hình đề thi
+   */
+  getExamConfigs: async (): Promise<ExamConfig[]> => {
+    const response = await axiosInstance.get<unknown>('/quiz/exam-configs', {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const inner = (body?.data as Record<string, unknown>)?.configs ?? body?.data
+    return Array.isArray(inner) ? (inner as ExamConfig[]) : []
+  },
+
+  /**
+   * POST /api/v1/quiz/exam-configs
+   * Tạo cấu hình đề thi mới
+   */
+  createExamConfig: async (dto: CreateExamConfigDto): Promise<ExamConfig> => {
+    const response = await axiosInstance.post<unknown>('/quiz/exam-configs', dto, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * PATCH /api/v1/quiz/exam-configs/:id
+   * Cập nhật cấu hình đề thi
+   */
+  updateExamConfig: async (id: number, dto: UpdateExamConfigDto): Promise<ExamConfig> => {
+    const response = await axiosInstance.patch<unknown>(`/quiz/exam-configs/${id}`, dto, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * DELETE /api/v1/quiz/exam-configs/:id
+   * Xóa cấu hình đề thi (soft delete)
+   */
+  deleteExamConfig: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/quiz/exam-configs/${id}`, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
   },
 }

@@ -38,8 +38,10 @@ export default function TakeExamPage() {
   const [submitResult, setSubmitResult] = useState<SubmitExamResult | null>(null)
   const [showResultPopup, setShowResultPopup] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const autosaveRef = useRef<NodeJS.Timeout | null>(null)
   const sessionRef = useRef<ExamSession | null>(null)
   const answersRef = useRef<Record<number, number>>({})
+  const timeRemainingRef = useRef(0)
   const prevNextRef = useRef<{
     goPrev: () => void
     goNext: () => void
@@ -48,6 +50,7 @@ export default function TakeExamPage() {
 
   sessionRef.current = session
   answersRef.current = answers
+  timeRemainingRef.current = timeRemaining
 
   useEffect(() => {
     let cancelled = false
@@ -113,6 +116,26 @@ export default function TakeExamPage() {
       if (timerRef.current) clearInterval(timerRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
+
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    if (!session) return
+    autosaveRef.current = setInterval(async () => {
+      const s = sessionRef.current
+      if (!s) return
+      try {
+        await examService.saveProgress(s.id, {
+          answerIds: answersRef.current,
+          remainingTime: timeRemainingRef.current,
+        })
+      } catch {
+        // silent — autosave failures should not interrupt the exam
+      }
+    }, 30_000)
+    return () => {
+      if (autosaveRef.current) clearInterval(autosaveRef.current)
+    }
   }, [session])
 
   useEffect(() => {
