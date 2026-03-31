@@ -3,44 +3,43 @@ import { authService } from '@/features/auth/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { useEffect } from 'react';
 
-// Set to true to skip API auth check (for dev without backend)
-const SKIP_API_AUTH_CHECK = false
-
 export const useAuth = () => {
-  const { setUser, clearUser, user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, _hasHydrated, setUser } = useAuthStore();
+
+  // Fire getMe ONLY after Zustand has hydrated AND there is no user in store.
+  // This covers the case where a valid session cookie exists but localStorage was cleared.
+  const enabled = _hasHydrated && !user;
 
   const {
     data,
-    isLoading,
-    isError,
+    isLoading: queryLoading,
     refetch,
   } = useQuery({
     queryKey: ['me'],
     queryFn: authService.getMe,
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    // Skip API call if SKIP_API_AUTH_CHECK is true
-    enabled: !SKIP_API_AUTH_CHECK,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled,
   });
 
+  // On success: sync server user into store
   useEffect(() => {
-    if (SKIP_API_AUTH_CHECK) {
-      return;
-    }
-    // Sync query data → store. Only clear when no user in store (avoid race after login).
-    if (data) {
-      setUser(data);
-    } else if (isError && !user) {
-      clearUser();
-    }
-  }, [data, isError, setUser, clearUser, user]);
+    if (data) setUser(data);
+  }, [data, setUser]);
+
+  // NOTE: we do NOT call clearUser() on query error here.
+  // Rationale: expired/invalid sessions are detected by the Axios 401 interceptor
+  // on real API calls, which clears the store and redirects. Clearing on getMe
+  // error here creates race conditions with in-flight requests after login.
 
   return {
     user,
     isAuthenticated,
-    // Return false for loading when skipping API
-    isLoading: SKIP_API_AUTH_CHECK ? false : isLoading,
+    // Loading while: (1) Zustand rehydrating from localStorage, OR
+    //                (2) actively checking session via API (no user in store yet)
+    isLoading: !_hasHydrated || (enabled && queryLoading),
     refetch,
   };
 };
+

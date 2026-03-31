@@ -275,7 +275,7 @@ export default function ExamPage() {
         {/* Start button */}
         <div className="mt-8 flex justify-center">
           <Button
-            onClick={handleStart}
+            onClick={() => void handleStart()}
             disabled={loading}
             className="h-12 gap-2 rounded-xl bg-main px-8 text-base font-semibold text-white hover:bg-[#002244]"
           >

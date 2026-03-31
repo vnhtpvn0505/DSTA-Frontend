@@ -100,16 +100,19 @@ export const quizService = {
       dataObj?.questions ??
       (data as { content?: QuizQuestion[] }).content
     const rawItems = Array.isArray(rawContent) ? rawContent : []
+    const pagination = dataObj?.pagination as Record<string, unknown> | undefined
 
     if (rawItems.length > 0 || dataObj) {
       items = rawItems as QuizQuestion[]
       const rawTotal =
+        pagination?.total ??
         dataObj?.total ??
         dataObj?.totalElements ??
         (data as { total?: number }).total ??
         items.length
       total = Math.max(0, Number(rawTotal) || 0)
       const rawTotalPages =
+        pagination?.totalPages ??
         dataObj?.totalPages ??
         (data as { totalPages?: number }).totalPages ??
         (limit > 0 ? Math.ceil(total / limit) : 1)
