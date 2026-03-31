@@ -314,4 +314,21 @@ export const quizService = {
       [SKIP_AUTH_REDIRECT]: true,
     } as Record<string, unknown>)
   },
+
+  /**
+   * GET /api/v1/quiz/exam-configs/active
+   * Lấy cấu hình đề thi đang active. Returns null if none found.
+   */
+  getActiveExamConfig: async (): Promise<ExamConfig | null> => {
+    try {
+      const response = await axiosInstance.get<unknown>('/quiz/exam-configs/active', {
+        [SKIP_AUTH_REDIRECT]: true,
+      } as Record<string, unknown>)
+      const body = response.data as Record<string, unknown>
+      const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+      return config ? (config as ExamConfig) : null
+    } catch {
+      return null
+    }
+  },
 }

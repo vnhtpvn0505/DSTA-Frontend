@@ -71,13 +71,19 @@ export interface ExamPracticalQuestion {
   actualScore: number
 }
 
+export interface ExamDistributionItem {
+  categoryId: number
+  skillName: string
+  counts: [string, string, string, string]
+}
+
 export interface ExamConfig {
   id: number
   name: string
   description: string | null
   examMode: ExamMode
   generalConfig: ExamGeneralConfig
-  distribution: Record<string, [string, string, string, string]>
+  distribution: ExamDistributionItem[]
   weights: ExamWeightConfig
   practicalQuestions: ExamPracticalQuestion[]
   isActive: boolean
@@ -90,7 +96,7 @@ export interface CreateExamConfigDto {
   description?: string
   examMode: ExamMode
   generalConfig: ExamGeneralConfig
-  distribution: Record<string, [string, string, string, string]>
+  distribution: ExamDistributionItem[]
   weights: ExamWeightConfig
   practicalQuestions: ExamPracticalQuestion[]
   isActive?: boolean

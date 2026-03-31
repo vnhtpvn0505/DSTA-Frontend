@@ -15,18 +15,10 @@ import type { ExamConfig } from '@/types/quiz'
  * - 6 miền năng lực × 4 mức độ khó.
  * - Công thức: Score_level_i = P_trac_nghiem * W_i / sum(N_j * W_j).
  * - Tự luận: Điểm thực tế = Tổng điểm tự luận × Tỷ lệ %.
+ * Distribution state is keyed by categoryId (number) for stable linkage to DB.
  */
 
-const SKILL_AREAS = [
-  'KHAI THÁC DỮ LIỆU VÀ THÔNG TIN',
-  'GIAO TIẾP VÀ HỢP TÁC TRONG MÔI TRƯỜNG SỐ',
-  'SÁNG TẠO NỘI DUNG SỐ',
-  'AN TOÀN TRONG MÔI TRƯỜNG SỐ',
-  'GIẢI QUYẾT VẤN ĐỀ TRONG MÔI TRƯỜNG SỐ',
-  'ỨNG DỤNG TRÍ TUỆ NHÂN TẠO (AI)',
-]
-
-const LEVEL_LABELS = ['Mức 1', 'Mức 2', 'Mức 3', 'Mức 4']
+const LEVEL_LABELS = ['Mức 1 (Easy)', 'Mức 2 (Medium)', 'Mức 3 (Hard)', 'Mức 4 (VeryHard)']
 
 /** Ma trận chuẩn: 6 miền × 4 mức, mỗi miền 10 câu, cột 20-20-10-10 */
 const STANDARD_MATRIX: [string, string, string, string][] = [
@@ -42,6 +34,12 @@ const STANDARD_WEIGHTS = { level1: 1, level2: 1.5, level3: 2, level4: 3 }
 
 type DistributionRow = [string, string, string, string]
 type ExamMode = 'standard' | 'dynamic'
+
+interface Category {
+  id: number
+  name: string
+  description?: string
+}
 
 interface PracticalQuestion {
   id: string
@@ -91,12 +89,8 @@ export default function ExamStructureTab() {
     durationMinutes: 30,
   })
   const [weightConfig, setWeightConfig] = useState(STANDARD_WEIGHTS)
-  const [distribution, setDistribution] = useState<Record<string, DistributionRow>>(
-    () =>
-      Object.fromEntries(
-        SKILL_AREAS.map((area, i) => [area, [...STANDARD_MATRIX[i]]])
-      )
-  )
+  // Distribution state keyed by categoryId (number) — stable DB linkage
+  const [distribution, setDistribution] = useState<Record<number, DistributionRow>>({})
   const [practicalQuestions, setPracticalQuestions] = useState<PracticalQuestion[]>([
     { id: '1', name: 'Câu 1', level: 'Mức Vận dụng', ratioPercent: 40, actualScore: 160 },
     { id: '2', name: 'Câu 2', level: 'Mức Sáng tạo', ratioPercent: 60, actualScore: 240 },
@@ -108,14 +102,37 @@ export default function ExamStructureTab() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveStatusTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Load categories from API — the source of truth for distribution rows
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: quizService.getCategories,
+  })
+
   // Load existing configs from API
   const { data: existingConfigs = [] } = useQuery<ExamConfig[]>({
     queryKey: ['exam-configs'],
     queryFn: quizService.getExamConfigs,
   })
 
-  // Populate local state from the first active config (runs once when configs arrive)
+  // Seed distribution from STANDARD_MATRIX when categories arrive (if no config loaded yet)
+  const categoriesSeeded = useRef(false)
   const configsApplied = useRef(false)
+
+  useEffect(() => {
+    if (categoriesSeeded.current || categories.length === 0) return
+    if (configsApplied.current) {
+      categoriesSeeded.current = true
+      return
+    }
+    categoriesSeeded.current = true
+    setDistribution(
+      Object.fromEntries(
+        categories.map((cat, i) => [cat.id, [...(STANDARD_MATRIX[i] ?? ['0', '0', '0', '0'])] as DistributionRow])
+      )
+    )
+  }, [categories])
+
+  // Populate local state from the first active config (runs once when configs arrive)
   useEffect(() => {
     if (configsApplied.current || existingConfigs.length === 0) return
     configsApplied.current = true
@@ -126,7 +143,10 @@ export default function ExamStructureTab() {
     setExamMode(active.examMode)
     setGeneralConfig(active.generalConfig)
     setWeightConfig(active.weights)
-    setDistribution(active.distribution)
+    // Deserialize DistributionItem[] → Record<categoryId, counts>
+    setDistribution(
+      Object.fromEntries(active.distribution.map((item) => [item.categoryId, item.counts]))
+    )
     setPracticalQuestions(active.practicalQuestions)
   }, [existingConfigs])
 
@@ -137,7 +157,12 @@ export default function ExamStructureTab() {
         name: configName || 'Cấu hình đề thi',
         examMode,
         generalConfig,
-        distribution,
+        // Serialize Record<categoryId, counts> → DistributionItem[]
+        distribution: categories.map((cat, i) => ({
+          categoryId: cat.id,
+          skillName: cat.name,
+          counts: distribution[cat.id] ?? (STANDARD_MATRIX[i] ?? ['0', '0', '0', '0']),
+        })),
         weights: weightConfig,
         practicalQuestions,
         isActive: true,
@@ -165,8 +190,8 @@ export default function ExamStructureTab() {
 
   const colTotals = useMemo((): [number, number, number, number] => {
     let c0 = 0, c1 = 0, c2 = 0, c3 = 0
-    SKILL_AREAS.forEach((area) => {
-      const row = distribution[area] ?? ['0', '0', '0', '0']
+    categories.forEach((cat) => {
+      const row = distribution[cat.id] ?? ['0', '0', '0', '0']
       const [a, b, c, d] = parseRow(row)
       c0 += a
       c1 += b
@@ -174,7 +199,7 @@ export default function ExamStructureTab() {
       c3 += d
     })
     return [c0, c1, c2, c3]
-  }, [distribution])
+  }, [distribution, categories])
 
   const totalMcqQuestions = useMemo(
     () => colTotals[0] + colTotals[1] + colTotals[2] + colTotals[3],
@@ -230,14 +255,14 @@ export default function ExamStructureTab() {
     )
   }
 
-  const handleMcqCellChange = (area: string, colIndex: number, value: string) => {
+  const handleMcqCellChange = (categoryId: number, colIndex: number, value: string) => {
     if (!editMcq || isStandard) return
     const sanitized = value.replace(/\D/g, '').slice(0, 2) || '0'
     setDistribution((prev) => {
-      const row = prev[area] ?? ['0', '0', '0', '0']
-      const next: DistributionRow = [...row]
+      const row = prev[categoryId] ?? ['0', '0', '0', '0']
+      const next: DistributionRow = [...row] as DistributionRow
       next[colIndex] = sanitized
-      return { ...prev, [area]: next }
+      return { ...prev, [categoryId]: next }
     })
   }
 
@@ -256,7 +281,7 @@ export default function ExamStructureTab() {
     setGeneralConfig((c) => ({ ...c, durationMinutes: 30 }))
     setDistribution(
       Object.fromEntries(
-        SKILL_AREAS.map((area, i) => [area, [...STANDARD_MATRIX[i]]])
+        categories.map((cat, i) => [cat.id, [...(STANDARD_MATRIX[i] ?? ['0', '0', '0', '0'])] as DistributionRow])
       )
     )
     setWeightConfig(STANDARD_WEIGHTS)
@@ -459,17 +484,17 @@ export default function ExamStructureTab() {
               </tr>
             </thead>
             <tbody>
-              {SKILL_AREAS.map((area, i) => {
-                const row = distribution[area] ?? ['0', '0', '0', '0']
+              {categories.map((cat, i) => {
+                const row = distribution[cat.id] ?? ['0', '0', '0', '0']
                 const total = rowTotal(row)
                 const canEdit = !isStandard && editMcq
                 return (
                   <tr
-                    key={area}
+                    key={cat.id}
                     className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/80'}
                   >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
-                      {area}
+                      {cat.name}
                     </td>
                     {[0, 1, 2, 3].map((colIndex) => (
                       <td key={colIndex} className="px-4 py-2 text-center">
@@ -479,7 +504,7 @@ export default function ExamStructureTab() {
                             inputMode="numeric"
                             value={row[colIndex]}
                             onChange={(e) =>
-                              handleMcqCellChange(area, colIndex, e.target.value)
+                              handleMcqCellChange(cat.id, colIndex, e.target.value)
                             }
                             className="mx-auto h-9 w-14 rounded-lg border-gray-300 px-2 py-1.5 text-center text-sm"
                           />
