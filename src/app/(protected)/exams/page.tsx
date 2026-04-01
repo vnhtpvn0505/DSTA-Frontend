@@ -24,7 +24,7 @@ const PAGE_SIZE = 10
 export default function ExamsPage() {
   const [activeTab, setActiveTab] = useState<ExamTab>('questions')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(1)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createCategoryDialogOpen, setCreateCategoryDialogOpen] = useState(false)
   const queryClient = useQueryClient()

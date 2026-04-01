@@ -144,9 +144,12 @@ export default function ExamStructureTab() {
     setGeneralConfig(active.generalConfig)
     setWeightConfig(active.weights)
     // Deserialize DistributionItem[] → Record<categoryId, counts>
-    setDistribution(
-      Object.fromEntries(active.distribution.map((item) => [item.categoryId, item.counts]))
-    )
+    // Guard against old name-keyed Record format still in DB
+    if (Array.isArray(active.distribution)) {
+      setDistribution(
+        Object.fromEntries(active.distribution.map((item) => [item.categoryId, item.counts]))
+      )
+    }
     setPracticalQuestions(active.practicalQuestions)
   }, [existingConfigs])
 
