@@ -9,6 +9,8 @@ interface ExamQuestionNavProps {
   flaggedSet: Set<number>
   onSelect: (index: number) => void
   onSubmit: () => void
+  /** Number of MC questions; questions at index >= mcCount are SA */
+  mcCount?: number
 }
 
 const COLS = 5
@@ -21,6 +23,7 @@ export default function ExamQuestionNav({
   flaggedSet: _flaggedSet,
   onSelect,
   onSubmit,
+  mcCount,
 }: ExamQuestionNavProps) {
   return (
     <aside className="flex h-full w-[244px] shrink-0 flex-col border-r border-gray-200 bg-gray-50">
@@ -39,22 +42,36 @@ export default function ExamQuestionNav({
           {Array.from({ length: total }, (_, i) => {
             const isCurrent = i === current
             const isAnswered = answeredSet.has(i)
+            const isSaDivider = mcCount != null && i === mcCount
 
             return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onSelect(i)}
-                className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors cursor-pointer',
-                  isCurrent && 'bg-[#00284D] text-white',
-                  isAnswered && !isCurrent && 'bg-emerald-500 text-white',
-                  !isCurrent && !isAnswered &&
-                    'bg-white text-gray-600 border border-gray-300 hover:border-gray-400',
+              <div key={i} className="contents">
+                {isSaDivider && (
+                  <div
+                    className="col-span-full mt-1 mb-1 flex items-center gap-2"
+                    style={{ gridColumn: `1 / span ${COLS}` }}
+                  >
+                    <div className="h-px flex-1 bg-gray-300" />
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      Tự luận
+                    </span>
+                    <div className="h-px flex-1 bg-gray-300" />
+                  </div>
                 )}
-              >
-                {i + 1}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onSelect(i)}
+                  className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors cursor-pointer',
+                    isCurrent && 'bg-[#00284D] text-white',
+                    isAnswered && !isCurrent && 'bg-emerald-500 text-white',
+                    !isCurrent && !isAnswered &&
+                      'bg-white text-gray-600 border border-gray-300 hover:border-gray-400',
+                  )}
+                >
+                  {i + 1}
+                </button>
+              </div>
             )
           })}
         </div>

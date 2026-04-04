@@ -115,14 +115,27 @@ export const examService = {
    */
   submitExam: async (
     examId: number,
-    body?: { answerIds?: number[] },
+    body?: { saAnswers?: Record<number, string> },
   ): Promise<SubmitExamResult> => {
     const response = await axiosInstance.post<unknown>(
       `/exam/${examId}/submit`,
-      body ?? { answerIds: [] },
+      body ?? {},
       { [SKIP_AUTH_REDIRECT]: true } as Record<string, unknown>,
     )
     return parseSubmitResult(response.data)
+  },
+
+  /**
+   * PATCH /api/v1/exam/:id/progress
+   * Lưu tiến độ bài thi (đáp án đã chọn + thời gian còn lại) — gọi tự động mỗi 30 giây.
+   */
+  saveProgress: async (
+    examId: number,
+    body: { answerIds: Record<number, number>; remainingTime: number; saAnswers?: Record<number, string> },
+  ): Promise<void> => {
+    await axiosInstance.patch(`/exam/${examId}/progress`, body, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
   },
 
   /**

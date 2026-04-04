@@ -53,6 +53,23 @@ export interface CertificateItem {
   testId: number | null
 }
 
+export interface RecentExamItem {
+  id: number
+  studentName: string
+  studentEmail: string
+  studentId: string
+  completedAt: string
+  score: number
+  rankName: string
+  rankLevel: number
+  isPassed: boolean
+}
+
+export interface LevelDistributionItem {
+  level: string
+  count: number
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function unwrap<T>(response: unknown): T {
@@ -115,6 +132,18 @@ export const userService = {
   getCertificates: async (): Promise<CertificateItem[]> => {
     const res = await axiosInstance.get<unknown>('/user/certificates')
     const items = unwrap<CertificateItem[]>(res.data)
+    return Array.isArray(items) ? items : []
+  },
+
+  getRecentExams: async (limit = 10): Promise<RecentExamItem[]> => {
+    const res = await axiosInstance.get<unknown>(`/user/recent-exams?limit=${limit}`)
+    const items = unwrap<RecentExamItem[]>(res.data)
+    return Array.isArray(items) ? items : []
+  },
+
+  getLevelDistribution: async (): Promise<LevelDistributionItem[]> => {
+    const res = await axiosInstance.get<unknown>('/user/level-distribution')
+    const items = unwrap<LevelDistributionItem[]>(res.data)
     return Array.isArray(items) ? items : []
   },
 }

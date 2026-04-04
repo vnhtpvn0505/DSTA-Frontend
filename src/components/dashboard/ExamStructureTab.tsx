@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { Pencil, Trash2, Save, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { quizService } from '@/features/quiz/quiz.service'
+import type { ExamConfig } from '@/types/quiz'
 
 /**
  * Cấu trúc đề thi — UI theo Figma DSAT (node-id=463-7631).
@@ -12,18 +15,10 @@ import { Input } from '@/components/ui/input'
  * - 6 miền năng lực × 4 mức độ khó.
  * - Công thức: Score_level_i = P_trac_nghiem * W_i / sum(N_j * W_j).
  * - Tự luận: Điểm thực tế = Tổng điểm tự luận × Tỷ lệ %.
+ * Distribution state is keyed by categoryId (number) for stable linkage to DB.
  */
 
-const SKILL_AREAS = [
-  'KHAI THÁC DỮ LIỆU VÀ THÔNG TIN',
-  'GIAO TIẾP VÀ HỢP TÁC TRONG MÔI TRƯỜNG SỐ',
-  'SÁNG TẠO NỘI DUNG SỐ',
-  'AN TOÀN TRONG MÔI TRƯỜNG SỐ',
-  'GIẢI QUYẾT VẤN ĐỀ TRONG MÔI TRƯỜNG SỐ',
-  'ỨNG DỤNG TRÍ TUỆ NHÂN TẠO (AI)',
-]
-
-const LEVEL_LABELS = ['Mức 1', 'Mức 2', 'Mức 3', 'Mức 4']
+const LEVEL_LABELS = ['Mức 1 (Easy)', 'Mức 2 (Medium)', 'Mức 3 (Hard)', 'Mức 4 (VeryHard)']
 
 /** Ma trận chuẩn: 6 miền × 4 mức, mỗi miền 10 câu, cột 20-20-10-10 */
 const STANDARD_MATRIX: [string, string, string, string][] = [
@@ -39,6 +34,12 @@ const STANDARD_WEIGHTS = { level1: 1, level2: 1.5, level3: 2, level4: 3 }
 
 type DistributionRow = [string, string, string, string]
 type ExamMode = 'standard' | 'dynamic'
+
+interface Category {
+  id: number
+  name: string
+  description?: string
+}
 
 interface PracticalQuestion {
   id: string
@@ -78,32 +79,122 @@ function parseRow(row: DistributionRow): [number, number, number, number] {
 }
 
 export default function ExamStructureTab() {
+  const queryClient = useQueryClient()
   const [examMode, setExamMode] = useState<ExamMode>('standard')
   const [editMcq, setEditMcq] = useState(false)
   const [editPractical, setEditPractical] = useState(false)
   const [generalConfig, setGeneralConfig] = useState({
-    totalMultipleChoice: 600,
-    totalEssay: 400,
+    totalMultipleChoice: 60,
+    totalEssay: 3,
     durationMinutes: 30,
   })
   const [weightConfig, setWeightConfig] = useState(STANDARD_WEIGHTS)
-  const [distribution, setDistribution] = useState<Record<string, DistributionRow>>(
-    () =>
-      Object.fromEntries(
-        SKILL_AREAS.map((area, i) => [area, [...STANDARD_MATRIX[i]]])
-      )
-  )
+  // Distribution state keyed by categoryId (number) — stable DB linkage
+  const [distribution, setDistribution] = useState<Record<number, DistributionRow>>({})
   const [practicalQuestions, setPracticalQuestions] = useState<PracticalQuestion[]>([
     { id: '1', name: 'Câu 1', level: 'Mức Vận dụng', ratioPercent: 40, actualScore: 160 },
     { id: '2', name: 'Câu 2', level: 'Mức Sáng tạo', ratioPercent: 60, actualScore: 240 },
   ])
 
+  // Track the config currently loaded from the server
+  const [selectedConfigId, setSelectedConfigId] = useState<number | null>(null)
+  const [configName, setConfigName] = useState('Đề chuẩn')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const saveStatusTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Load categories from API — the source of truth for distribution rows
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: quizService.getCategories,
+  })
+
+  // Load existing configs from API
+  const { data: existingConfigs = [] } = useQuery<ExamConfig[]>({
+    queryKey: ['exam-configs'],
+    queryFn: quizService.getExamConfigs,
+  })
+
+  // Seed distribution from STANDARD_MATRIX when categories arrive (if no config loaded yet)
+  const categoriesSeeded = useRef(false)
+  const configsApplied = useRef(false)
+
+  useEffect(() => {
+    if (categoriesSeeded.current || categories.length === 0) return
+    if (configsApplied.current) {
+      categoriesSeeded.current = true
+      return
+    }
+    categoriesSeeded.current = true
+    setDistribution(
+      Object.fromEntries(
+        categories.map((cat, i) => [cat.id, [...(STANDARD_MATRIX[i] ?? ['0', '0', '0', '0'])] as DistributionRow])
+      )
+    )
+  }, [categories])
+
+  // Populate local state from the first active config (runs once when configs arrive)
+  useEffect(() => {
+    if (configsApplied.current || existingConfigs.length === 0) return
+    configsApplied.current = true
+    const active = existingConfigs.find((c) => c.isActive) ?? existingConfigs[0]
+    if (!active) return
+    setSelectedConfigId(active.id)
+    setConfigName(active.name)
+    setExamMode(active.examMode)
+    setGeneralConfig(active.generalConfig)
+    setWeightConfig(active.weights)
+    // Deserialize DistributionItem[] → Record<categoryId, counts>
+    // Guard against old name-keyed Record format still in DB
+    if (Array.isArray(active.distribution)) {
+      setDistribution(
+        Object.fromEntries(active.distribution.map((item) => [item.categoryId, item.counts]))
+      )
+    }
+    setPracticalQuestions(active.practicalQuestions)
+  }, [existingConfigs])
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const dto = {
+        name: configName || 'Cấu hình đề thi',
+        examMode,
+        generalConfig,
+        // Serialize Record<categoryId, counts> → DistributionItem[]
+        distribution: categories.map((cat, i) => ({
+          categoryId: cat.id,
+          skillName: cat.name,
+          counts: distribution[cat.id] ?? (STANDARD_MATRIX[i] ?? ['0', '0', '0', '0']),
+        })),
+        weights: weightConfig,
+        practicalQuestions,
+        isActive: true,
+      }
+      if (selectedConfigId != null) {
+        return quizService.updateExamConfig(selectedConfigId, dto)
+      }
+      return quizService.createExamConfig(dto)
+    },
+    onSuccess: (saved) => {
+      setSelectedConfigId(saved.id)
+      queryClient.invalidateQueries({ queryKey: ['exam-configs'] })
+      setSaveStatus('saved')
+      if (saveStatusTimeout.current) clearTimeout(saveStatusTimeout.current)
+      saveStatusTimeout.current = setTimeout(() => setSaveStatus('idle'), 3000)
+    },
+    onError: () => {
+      setSaveStatus('error')
+      if (saveStatusTimeout.current) clearTimeout(saveStatusTimeout.current)
+      saveStatusTimeout.current = setTimeout(() => setSaveStatus('idle'), 3000)
+    },
+  })
+
   const isStandard = examMode === 'standard'
 
   const colTotals = useMemo((): [number, number, number, number] => {
     let c0 = 0, c1 = 0, c2 = 0, c3 = 0
-    SKILL_AREAS.forEach((area) => {
-      const row = distribution[area] ?? ['0', '0', '0', '0']
+    categories.forEach((cat) => {
+      const row = distribution[cat.id] ?? ['0', '0', '0', '0']
       const [a, b, c, d] = parseRow(row)
       c0 += a
       c1 += b
@@ -111,7 +202,7 @@ export default function ExamStructureTab() {
       c3 += d
     })
     return [c0, c1, c2, c3]
-  }, [distribution])
+  }, [distribution, categories])
 
   const totalMcqQuestions = useMemo(
     () => colTotals[0] + colTotals[1] + colTotals[2] + colTotals[3],
@@ -167,14 +258,14 @@ export default function ExamStructureTab() {
     )
   }
 
-  const handleMcqCellChange = (area: string, colIndex: number, value: string) => {
+  const handleMcqCellChange = (categoryId: number, colIndex: number, value: string) => {
     if (!editMcq || isStandard) return
     const sanitized = value.replace(/\D/g, '').slice(0, 2) || '0'
     setDistribution((prev) => {
-      const row = prev[area] ?? ['0', '0', '0', '0']
-      const next: DistributionRow = [...row]
+      const row = prev[categoryId] ?? ['0', '0', '0', '0']
+      const next: DistributionRow = [...row] as DistributionRow
       next[colIndex] = sanitized
-      return { ...prev, [area]: next }
+      return { ...prev, [categoryId]: next }
     })
   }
 
@@ -193,7 +284,7 @@ export default function ExamStructureTab() {
     setGeneralConfig((c) => ({ ...c, durationMinutes: 30 }))
     setDistribution(
       Object.fromEntries(
-        SKILL_AREAS.map((area, i) => [area, [...STANDARD_MATRIX[i]]])
+        categories.map((cat, i) => [cat.id, [...(STANDARD_MATRIX[i] ?? ['0', '0', '0', '0'])] as DistributionRow])
       )
     )
     setWeightConfig(STANDARD_WEIGHTS)
@@ -206,7 +297,7 @@ export default function ExamStructureTab() {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Chế độ đề thi — thanh gọn như Figma, không chiếm card riêng */}
+      {/* Chế độ đề thi + Tên cấu hình + Nút lưu */}
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <span className="text-sm font-medium text-gray-700">Chế độ đề thi:</span>
         <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
@@ -232,6 +323,39 @@ export default function ExamStructureTab() {
           >
             Tùy chỉnh
           </button>
+        </div>
+
+        {/* Config name + save */}
+        <div className="ml-auto flex items-center gap-3">
+          <Input
+            type="text"
+            value={configName}
+            onChange={(e) => setConfigName(e.target.value)}
+            placeholder="Tên cấu hình..."
+            className="h-9 w-44 rounded-lg border-gray-200 text-sm"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => { setSaveStatus('saving'); saveMutation.mutate() }}
+            disabled={saveMutation.isPending}
+            className="h-9 gap-1.5 bg-main hover:bg-main/90 text-white"
+          >
+            {saveStatus === 'saved' ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Đã lưu
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                {saveMutation.isPending ? 'Đang lưu...' : 'Lưu cấu hình'}
+              </>
+            )}
+          </Button>
+          {saveStatus === 'error' && (
+            <span className="text-xs text-red-500">Lưu thất bại</span>
+          )}
         </div>
       </div>
 
@@ -363,17 +487,17 @@ export default function ExamStructureTab() {
               </tr>
             </thead>
             <tbody>
-              {SKILL_AREAS.map((area, i) => {
-                const row = distribution[area] ?? ['0', '0', '0', '0']
+              {categories.map((cat, i) => {
+                const row = distribution[cat.id] ?? ['0', '0', '0', '0']
                 const total = rowTotal(row)
                 const canEdit = !isStandard && editMcq
                 return (
                   <tr
-                    key={area}
+                    key={cat.id}
                     className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/80'}
                   >
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
-                      {area}
+                      {cat.name}
                     </td>
                     {[0, 1, 2, 3].map((colIndex) => (
                       <td key={colIndex} className="px-4 py-2 text-center">
@@ -383,7 +507,7 @@ export default function ExamStructureTab() {
                             inputMode="numeric"
                             value={row[colIndex]}
                             onChange={(e) =>
-                              handleMcqCellChange(area, colIndex, e.target.value)
+                              handleMcqCellChange(cat.id, colIndex, e.target.value)
                             }
                             className="mx-auto h-9 w-14 rounded-lg border-gray-300 px-2 py-1.5 text-center text-sm"
                           />
