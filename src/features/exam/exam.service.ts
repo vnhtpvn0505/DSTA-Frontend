@@ -115,7 +115,7 @@ export const examService = {
    */
   submitExam: async (
     examId: number,
-    body?: { answerIds?: number[]; saAnswers?: Record<number, string> },
+    body?: { saAnswers?: Record<number, string> },
   ): Promise<SubmitExamResult> => {
     const response = await axiosInstance.post<unknown>(
       `/exam/${examId}/submit`,

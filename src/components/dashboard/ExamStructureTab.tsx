@@ -84,8 +84,8 @@ export default function ExamStructureTab() {
   const [editMcq, setEditMcq] = useState(false)
   const [editPractical, setEditPractical] = useState(false)
   const [generalConfig, setGeneralConfig] = useState({
-    totalMultipleChoice: 600,
-    totalEssay: 400,
+    totalMultipleChoice: 60,
+    totalEssay: 3,
     durationMinutes: 30,
   })
   const [weightConfig, setWeightConfig] = useState(STANDARD_WEIGHTS)

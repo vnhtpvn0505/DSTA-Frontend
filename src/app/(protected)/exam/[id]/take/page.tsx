@@ -224,16 +224,13 @@ export default function TakeExamPage() {
     setSubmitError('')
     setSubmitting(true)
     try {
-      const ans = answersRef.current
       const allQs = allQuestionsRef.current
-      const mcAnswerIds: Record<number, number> = {}
+      const ans = answersRef.current
       const saAnswers: Record<number, string> = {}
       allQs.forEach((q, i) => {
-        if (q.type === 'mc' && ans[i] != null) mcAnswerIds[q.id] = ans[i] as number
-        else if (q.type === 'sa' && ans[i] != null) saAnswers[q.id] = ans[i] as string
+        if (q.type === 'sa' && ans[i] != null) saAnswers[q.id] = ans[i] as string
       })
       const result = await examService.submitExam(examId, {
-        answerIds: Object.values(mcAnswerIds),
         saAnswers: Object.keys(saAnswers).length > 0 ? saAnswers : undefined,
       })
       sessionStorage.removeItem('examSession')
