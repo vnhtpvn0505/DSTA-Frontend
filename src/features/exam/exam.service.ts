@@ -168,7 +168,7 @@ function parseSubmitResult(body: unknown): SubmitExamResult {
   return {
     score: Number.isFinite(score) ? score : 0,
     totalScore: Number(data?.totalScore) || undefined,
-    passed: Boolean(data?.passed),
+    passed: Boolean(data?.isPassed ?? data?.passed),
     message: typeof data?.message === 'string' ? data.message : String(obj?.message ?? ''),
   }
 }
