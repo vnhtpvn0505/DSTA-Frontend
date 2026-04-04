@@ -220,6 +220,10 @@ export default function TakeExamPage() {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
+    if (autosaveRef.current) {
+      clearInterval(autosaveRef.current)
+      autosaveRef.current = null
+    }
     setShowSubmitConfirm(false)
     setSubmitError('')
     setSubmitting(true)
