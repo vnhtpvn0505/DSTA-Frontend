@@ -248,10 +248,11 @@ export default function TakeExamPage() {
   }, [examId])
 
   const handleCloseResultPopup = useCallback(() => {
+    const pending = submitResult?.hasPendingSa
     setShowResultPopup(false)
     setSubmitResult(null)
-    router.push('/certificate')
-  }, [router])
+    router.push(pending ? '/result' : '/certificate')
+  }, [router, submitResult])
 
   if (!session) {
     return (
@@ -414,12 +415,13 @@ export default function TakeExamPage() {
           </DialogHeader>
           {submitResult && (
             <div className="space-y-4 py-2">
+              {/* MC score — always shown */}
               <div className="flex items-baseline justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
                 <span className="text-sm font-medium text-muted-foreground">
-                  Điểm số
+                  {submitResult.hasPendingSa ? 'Điểm trắc nghiệm' : 'Điểm số'}
                 </span>
                 <span className="text-2xl font-bold tabular-nums text-foreground">
-                  {submitResult.score ?? 0}
+                  {submitResult.mcScore ?? submitResult.score ?? 0}
                   {submitResult.totalScore != null && (
                     <span className="ml-1 text-lg font-normal text-muted-foreground">
                       / {submitResult.totalScore}
@@ -427,29 +429,57 @@ export default function TakeExamPage() {
                   )}
                 </span>
               </div>
+
+              {/* SA score row — only shown when exam has SA questions */}
+              {submitResult.hasPendingSa && (
+                <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Điểm tự luận
+                  </span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    Chờ kết quả
+                  </span>
+                </div>
+              )}
+
+              {/* Overall result */}
               <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
                 <span className="text-sm font-medium text-muted-foreground">
                   Kết quả
                 </span>
-                <span
-                  className={
-                    submitResult.passed
-                      ? 'font-semibold text-green-600 dark:text-green-400'
-                      : 'font-semibold text-amber-600 dark:text-amber-400'
-                  }
-                >
-                  {submitResult.passed ? 'Đạt' : 'Chưa đạt'}
-                </span>
+                {submitResult.hasPendingSa ? (
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    Chờ chấm điểm
+                  </span>
+                ) : (
+                  <span
+                    className={
+                      submitResult.passed
+                        ? 'font-semibold text-green-600 dark:text-green-400'
+                        : 'font-semibold text-amber-600 dark:text-amber-400'
+                    }
+                  >
+                    {submitResult.passed ? 'Đạt' : 'Chưa đạt'}
+                  </span>
+                )}
               </div>
-              {submitResult.message && (
-                <p className="text-sm text-muted-foreground">
-                  {submitResult.message}
+
+              {submitResult.hasPendingSa && (
+                <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                  Bài thi của bạn đã được ghi nhận. Điểm tự luận sẽ được cập nhật sau khi
+                  giảng viên hoàn tất chấm điểm.
                 </p>
+              )}
+
+              {!submitResult.hasPendingSa && submitResult.message && (
+                <p className="text-sm text-muted-foreground">{submitResult.message}</p>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button onClick={handleCloseResultPopup}>Xem chứng chỉ</Button>
+            <Button onClick={handleCloseResultPopup}>
+              {submitResult?.hasPendingSa ? 'Xem lịch sử thi' : 'Xem chứng chỉ'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -4,9 +4,12 @@ import type { ExamSession } from '@/types/exam'
 export interface ExamHistoryItem {
   id: number
   score: number
+  mcScore?: number | null
   totalPoints: number
   rankName: string
   isPassed: boolean
+  /** 'COMPLETED' | 'PENDING_SA_GRADING' */
+  status?: string
   startedAt: string
   finishedAt: string
 }
@@ -158,17 +161,26 @@ export interface SubmitExamResult {
   totalScore?: number
   passed?: boolean
   message?: string
+  /** True when the exam has SA questions awaiting manual grading */
+  hasPendingSa?: boolean
+  /** MC-only score (available immediately after submission) */
+  mcScore?: number
 }
 
 function parseSubmitResult(body: unknown): SubmitExamResult {
   if (body == null || typeof body !== 'object') return { score: 0 }
   const obj = body as Record<string, unknown>
   const data = (obj.data as Record<string, unknown>) ?? obj
-  const score = Number(data?.score ?? data?.totalScore ?? 0)
+  // Support nested { data: { result: { ... } } } envelope
+  const result = (data?.result as Record<string, unknown>) ?? data
+  const score = Number(result?.score ?? result?.totalScore ?? 0)
+  const hasPendingSa = Boolean(result?.hasPendingSa)
   return {
     score: Number.isFinite(score) ? score : 0,
-    totalScore: Number(data?.totalScore) || undefined,
-    passed: Boolean(data?.passed),
-    message: typeof data?.message === 'string' ? data.message : String(obj?.message ?? ''),
+    totalScore: Number(result?.totalPoints ?? result?.totalScore) || undefined,
+    passed: hasPendingSa ? false : Boolean(result?.isPassed ?? result?.passed),
+    message: typeof result?.message === 'string' ? result.message : String(obj?.message ?? ''),
+    hasPendingSa,
+    mcScore: result?.mcScore != null ? Number(result.mcScore) : undefined,
   }
 }

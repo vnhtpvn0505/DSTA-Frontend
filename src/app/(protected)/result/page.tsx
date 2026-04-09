@@ -6,6 +6,10 @@ import ResultDonutChart from '@/components/dashboard/ResultDonutChart'
 import { useQuery } from '@tanstack/react-query'
 import { examService } from '@/features/exam/exam.service'
 
+function isPendingSa(item: { status?: string }) {
+  return item.status === 'PENDING_SA_GRADING'
+}
+
 export default function ResultPage() {
   const { user } = useAuth()
 
@@ -14,18 +18,21 @@ export default function ResultPage() {
     queryFn: examService.getHistory,
   })
 
+  // Only count fully-graded exams in stats; pending-SA exams are shown in the table but excluded from averages/pass-rate
+  const gradedExams = history.filter((r) => !isPendingSa(r))
   const totalExams = history.length
   const avgScore =
-    totalExams > 0
-      ? history.reduce((sum, r) => sum + (r.totalPoints > 0 ? (r.score / r.totalPoints) * 100 : 0), 0) /
-        totalExams
+    gradedExams.length > 0
+      ? gradedExams.reduce((sum, r) => sum + (r.totalPoints > 0 ? (r.score / r.totalPoints) * 100 : 0), 0) /
+        gradedExams.length
       : 0
-  const passedCount = history.filter((r) => r.isPassed).length
-  const passRate = totalExams > 0 ? Math.round((passedCount / totalExams) * 100) : 0
+  const passedCount = gradedExams.filter((r) => r.isPassed).length
+  const passRate = gradedExams.length > 0 ? Math.round((passedCount / gradedExams.length) * 100) : 0
+  const pendingCount = history.filter(isPendingSa).length
 
   const resultDistribution = [
     { name: 'Đạt', value: passedCount, percent: passRate, color: '#22c55e' },
-    { name: 'Chưa đạt', value: totalExams - passedCount, percent: 100 - passRate, color: '#ef4444' },
+    { name: 'Chưa đạt', value: gradedExams.length - passedCount, percent: 100 - passRate, color: '#ef4444' },
   ]
 
   return (
@@ -38,8 +45,7 @@ export default function ResultPage() {
                 Kết quả thi
               </h1>
               <p className="mt-1 text-sm text-gray-500">
-                Xin chào {user?.email}, đây là tổng quan kết
-                quả các bài thi của bạn.
+                Xin chào {user?.email}, đây là tổng quan kết quả các bài thi của bạn.
               </p>
             </div>
           </div>
@@ -50,7 +56,7 @@ export default function ResultPage() {
               <p className="mt-2 text-3xl font-extrabold text-gray-900">
                 {avgScore.toFixed(1)}
               </p>
-              <p className="mt-1 text-xs text-gray-500">Trên thang điểm 100</p>
+              <p className="mt-1 text-xs text-gray-500">Trên thang điểm 100 (bài đã chấm xong)</p>
             </div>
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">Số bài thi đã làm</p>
@@ -58,7 +64,9 @@ export default function ResultPage() {
                 {totalExams}
               </p>
               <p className="mt-1 text-xs text-gray-500">
-                Bao gồm tất cả các môn gần đây
+                {pendingCount > 0
+                  ? `${pendingCount} bài chờ chấm điểm tự luận`
+                  : 'Bao gồm tất cả các bài gần đây'}
               </p>
             </div>
             <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -121,30 +129,48 @@ export default function ResultPage() {
                           </td>
                         </tr>
                       ) : (
-                        history.map((result) => (
-                          <tr key={result.id} className="hover:bg-gray-50/60">
-                            <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                              {result.rankName}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                              {new Date(result.finishedAt).toLocaleDateString('vi-VN')}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                              {result.score}/{result.totalPoints}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3">
-                              <span
-                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                  result.isPassed
-                                    ? 'bg-emerald-50 text-emerald-700'
-                                    : 'bg-red-50 text-red-700'
-                                }`}
-                              >
-                                {result.isPassed ? 'Đạt' : 'Chưa đạt'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
+                        history.map((result) => {
+                          const pending = isPendingSa(result)
+                          return (
+                            <tr key={result.id} className="hover:bg-gray-50/60">
+                              <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                                {result.rankName}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                                {new Date(result.finishedAt).toLocaleDateString('vi-VN')}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                                {pending ? (
+                                  <span>
+                                    <span className="font-medium">
+                                      {result.mcScore ?? result.score}
+                                    </span>
+                                    <span className="ml-1 text-xs text-gray-400">
+                                      /{result.totalPoints} (TN)
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <span>{result.score}/{result.totalPoints}</span>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3">
+                                {pending ? (
+                                  <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                                    Chờ chấm điểm
+                                  </span>
+                                ) : result.isPassed ? (
+                                  <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                    Đạt
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+                                    Chưa đạt
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })
                       )}
                     </tbody>
                   </table>
