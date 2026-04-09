@@ -17,9 +17,10 @@ import ExamQuestionNav from '@/components/exam/ExamQuestionNav'
 import ExamHeader from '@/components/exam/ExamHeader'
 import ExamOptionList from '@/components/exam/ExamOptionList'
 import ExamFooter from '@/components/exam/ExamFooter'
+import ExamSAInput from '@/components/exam/ExamSAInput'
 import { examService } from '@/features/exam/exam.service'
 import type { SubmitExamResult } from '@/features/exam/exam.service'
-import type { ExamSession } from '@/types/exam'
+import type { ExamSession, SaQuestion } from '@/types/exam'
 
 export default function TakeExamPage() {
   const router = useRouter()
@@ -29,7 +30,8 @@ export default function TakeExamPage() {
   const [session, setSession] = useState<ExamSession | null>(null)
   const [loadingRestore, setLoadingRestore] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  // answers: index → optionId (MC) or text (SA)
+  const [answers, setAnswers] = useState<Record<number, number | string>>({})
   const [flagged, setFlagged] = useState<Set<number>>(new Set())
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
@@ -37,9 +39,16 @@ export default function TakeExamPage() {
   const [submitError, setSubmitError] = useState('')
   const [submitResult, setSubmitResult] = useState<SubmitExamResult | null>(null)
   const [showResultPopup, setShowResultPopup] = useState(false)
+  // allQuestions merges MC questions (type:'mc') + SA questions (type:'sa')
+  const [allQuestions, setAllQuestions] = useState<
+    Array<{ id: number; content: string; type: 'mc' | 'sa'; options?: import('@/types/exam').ExamOption[] }>
+  >([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const autosaveRef = useRef<NodeJS.Timeout | null>(null)
   const sessionRef = useRef<ExamSession | null>(null)
-  const answersRef = useRef<Record<number, number>>({})
+  const answersRef = useRef<Record<number, number | string>>({})
+  const allQuestionsRef = useRef(allQuestions)
+  const timeRemainingRef = useRef(0)
   const prevNextRef = useRef<{
     goPrev: () => void
     goNext: () => void
@@ -48,6 +57,34 @@ export default function TakeExamPage() {
 
   sessionRef.current = session
   answersRef.current = answers
+  allQuestionsRef.current = allQuestions
+  timeRemainingRef.current = timeRemaining
+
+  // Helper: build unified question list from session
+  const buildAllQuestions = (s: ExamSession) => {
+    type Q = { id: number; content: string; createdAt: string; type: 'mc' | 'sa'; options?: import('@/types/exam').ExamOption[] }
+    const mc: Q[] = s.questions.map((q) => ({ ...q, type: 'mc' as const }))
+    const sa: Q[] = (s.saQuestions ?? []).map((q) => ({
+      id: q.id,
+      content: q.content,
+      createdAt: '',
+      type: 'sa' as const,
+    }))
+    return [...mc, ...sa]
+  }
+
+  // Helper: restore SA answers from session into indexed form (offset by MC count)
+  const restoreSaAnswers = (s: ExamSession, mcCount: number): Record<number, number | string> => {
+    const result: Record<number, number | string> = {}
+    if (s.saAnswers) {
+      const saQs = s.saQuestions ?? []
+      saQs.forEach((sq, i) => {
+        const saved = s.saAnswers![sq.id]
+        if (saved != null) result[mcCount + i] = saved
+      })
+    }
+    return result
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -59,8 +96,11 @@ export default function TakeExamPage() {
           const parsed: ExamSession = JSON.parse(raw)
           if (parsed.id === examId || !Number.isFinite(examId)) {
             if (!cancelled) {
+              const merged = buildAllQuestions(parsed)
               setSession(parsed)
+              setAllQuestions(merged)
               setTimeRemaining(parsed.remainingTime)
+              setAnswers(restoreSaAnswers(parsed, parsed.questions.length))
             }
             setLoadingRestore(false)
             return
@@ -74,8 +114,11 @@ export default function TakeExamPage() {
         const restored = await examService.getSessionById(examId)
         if (cancelled) return
         if (restored) {
+          const merged = buildAllQuestions(restored)
           setSession(restored)
+          setAllQuestions(merged)
           setTimeRemaining(restored.remainingTime)
+          setAnswers(restoreSaAnswers(restored, restored.questions.length))
           try {
             sessionStorage.setItem('examSession', JSON.stringify(restored))
           } catch {
@@ -115,6 +158,36 @@ export default function TakeExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    if (!session) return
+    autosaveRef.current = setInterval(async () => {
+      const s = sessionRef.current
+      if (!s) return
+      try {
+        const allQs = allQuestionsRef.current
+        const ans = answersRef.current
+        const mcAnswerIds: Record<number, number> = {}
+        const saAnswers: Record<number, string> = {}
+        allQs.forEach((q) => {
+          const idx = allQs.indexOf(q)
+          if (q.type === 'mc' && ans[idx] != null) mcAnswerIds[q.id] = ans[idx] as number
+          else if (q.type === 'sa' && ans[idx] != null) saAnswers[q.id] = ans[idx] as string
+        })
+        await examService.saveProgress(s.id, {
+          answerIds: mcAnswerIds,
+          remainingTime: timeRemainingRef.current,
+          saAnswers: Object.keys(saAnswers).length > 0 ? saAnswers : undefined,
+        })
+      } catch {
+        // silent — autosave failures should not interrupt the exam
+      }
+    }, 30_000)
+    return () => {
+      if (autosaveRef.current) clearInterval(autosaveRef.current)
+    }
+  }, [session])
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const { goPrev, goNext, preventShortcuts } = prevNextRef.current
@@ -147,15 +220,23 @@ export default function TakeExamPage() {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
+    if (autosaveRef.current) {
+      clearInterval(autosaveRef.current)
+      autosaveRef.current = null
+    }
     setShowSubmitConfirm(false)
     setSubmitError('')
     setSubmitting(true)
     try {
+      const allQs = allQuestionsRef.current
       const ans = answersRef.current
-      const answerIds = s.questions
-        .map((_, i) => ans[i])
-        .filter((id): id is number => id != null)
-      const result = await examService.submitExam(examId, { answerIds })
+      const saAnswers: Record<number, string> = {}
+      allQs.forEach((q, i) => {
+        if (q.type === 'sa' && ans[i] != null) saAnswers[q.id] = ans[i] as string
+      })
+      const result = await examService.submitExam(examId, {
+        saAnswers: Object.keys(saAnswers).length > 0 ? saAnswers : undefined,
+      })
       sessionStorage.removeItem('examSession')
       setSubmitResult(result)
       setShowResultPopup(true)
@@ -180,16 +261,29 @@ export default function TakeExamPage() {
     )
   }
 
-  const questions = session.questions
-  const total = questions.length
-  const currentQ = questions[currentIndex]
+  const total = allQuestions.length
+  const currentQ = allQuestions[currentIndex]
+  const mcCount = session.questions.length
+  const isSaSection = currentQ?.type === 'sa'
   const isCritical = timeRemaining < 5 * 60
-  const answeredSet = new Set(Object.keys(answers).map(Number))
-  const selectedOptionId = answers[currentIndex] ?? null
-  const hasSelection = selectedOptionId != null
+  // An index is "answered" for MC if a number is stored, for SA if a non-empty string is stored
+  const answeredSet = new Set(
+    Object.entries(answers)
+      .filter(([, v]) => (typeof v === 'number' ? true : (v as string).trim().length > 0))
+      .map(([k]) => Number(k)),
+  )
+  const selectedOptionId = typeof answers[currentIndex] === 'number'
+    ? (answers[currentIndex] as number)
+    : null
+  const saText = typeof answers[currentIndex] === 'string' ? (answers[currentIndex] as string) : ''
+  const hasSelection = isSaSection ? saText.trim().length > 0 : selectedOptionId != null
 
   const handleSelectOption = (optionId: number) => {
     setAnswers((prev) => ({ ...prev, [currentIndex]: optionId }))
+  }
+
+  const handleSAAnswer = (text: string) => {
+    setAnswers((prev) => ({ ...prev, [currentIndex]: text }))
   }
 
   const handleNext = () => {
@@ -242,6 +336,7 @@ export default function TakeExamPage() {
           flaggedSet={flagged}
           onSelect={setCurrentIndex}
           onSubmit={() => setShowSubmitConfirm(true)}
+          mcCount={mcCount}
         />
 
         {/* Right: Question content + options + footer */}
@@ -256,15 +351,25 @@ export default function TakeExamPage() {
                 Hướng dẫn làm bài thi
               </Link>
 
+              {isSaSection && (
+                <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700">
+                  Phần 2: Câu hỏi tự luận — Câu {currentIndex - mcCount + 1}/{total - mcCount}
+                </div>
+              )}
+
               <h2 className="mb-6 text-xl font-bold leading-relaxed text-gray-900">
                 {currentQ.content}
               </h2>
 
-              <ExamOptionList
-                options={currentQ.options}
-                selectedOptionId={selectedOptionId}
-                onSelect={handleSelectOption}
-              />
+              {isSaSection ? (
+                <ExamSAInput value={saText} onChange={handleSAAnswer} />
+              ) : (
+                <ExamOptionList
+                  options={currentQ.options ?? []}
+                  selectedOptionId={selectedOptionId}
+                  onSelect={handleSelectOption}
+                />
+              )}
             </div>
           </div>
 

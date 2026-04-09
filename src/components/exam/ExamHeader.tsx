@@ -26,7 +26,8 @@ export default function ExamHeader({
   hasNext = true,
 }: ExamHeaderProps) {
   const { user } = useAuth()
-  const displayName = user?.fullName ?? user?.name ?? user?.email ?? 'Student'
+  const displayName =
+    user?.firstName ?? user?.email ?? 'Student'
   const displayEmail = user?.email ?? ''
 
   return (

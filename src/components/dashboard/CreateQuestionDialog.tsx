@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -36,10 +36,10 @@ const formSchema = z
     content: z.string().min(1, 'Nội dung là bắt buộc'),
     categoryId: z.preprocess(
       (v) => (v === '' || v === undefined ? undefined : Number(v)),
-      z.number({ required_error: 'Miền năng lực là bắt buộc' }).min(1),
+      z.number({ message: 'Miền năng lực là bắt buộc' }).min(1),
     ),
     level: z.enum(['Easy', 'Medium', 'Hard'], {
-      required_error: 'Độ khó là bắt buộc',
+      message: 'Độ khó là bắt buộc',
     }),
     options: z
       .array(optionSchema)
@@ -55,7 +55,9 @@ const formSchema = z
   })
   .strict()
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = Omit<z.infer<typeof formSchema>, 'categoryId'> & {
+  categoryId: number
+}
 
 interface CreateQuestionDialogProps {
   open: boolean
@@ -96,7 +98,7 @@ export default function CreateQuestionDialog({
   })
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<FormValues>,
     defaultValues: {
       content: '',
       categoryId: categories[0]?.id ?? 1,

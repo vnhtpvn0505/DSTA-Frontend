@@ -8,7 +8,13 @@ export interface ExamQuestion {
   id: number
   content: string
   createdAt: string
-  options: ExamOption[]
+  type?: 'mc' | 'sa'
+  options?: ExamOption[]
+}
+
+export interface SaQuestion {
+  id: number
+  content: string
 }
 
 export interface ExamSession {
@@ -16,6 +22,8 @@ export interface ExamSession {
   userId: number
   questions: ExamQuestion[]
   answerIds: number[] | null
+  saQuestions?: SaQuestion[]
+  saAnswers?: Record<number, string> | null
   status: 'IN_PROGRESS' | 'COMPLETED' | 'SUBMITTED'
   remainingTime: number
   startedAt: string

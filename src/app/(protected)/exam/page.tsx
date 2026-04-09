@@ -12,6 +12,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { examService } from '@/features/exam/exam.service'
+import { quizService } from '@/features/quiz/quiz.service'
+import { useQuery } from '@tanstack/react-query'
 
 const ABANDON_ERROR_MSG =
   'Không thể hủy bài thi. Vui lòng thử lại hoặc tiếp tục bài thi hiện tại.'
@@ -72,6 +74,15 @@ export default function ExamPage() {
   const [examInProgress, setExamInProgress] = useState(false)
   const [currentExamId, setCurrentExamId] = useState<number | null>(null)
   const [abandonLoading, setAbandonLoading] = useState(false)
+
+  const { data: activeConfig } = useQuery({
+    queryKey: ['exam-config-active'],
+    queryFn: quizService.getActiveExamConfig,
+    staleTime: 60_000,
+  })
+
+  const displayTotalQuestions = activeConfig?.generalConfig.totalMultipleChoice ?? EXAM_INFO.totalQuestions
+  const displayDuration = activeConfig ? `${activeConfig.generalConfig.durationMinutes}'` : EXAM_INFO.duration
 
   const showExamActionDialog =
     !!error &&
@@ -209,8 +220,8 @@ export default function ExamPage() {
         {/* Info table */}
         <div className="mx-auto mt-8 max-w-sm divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200">
           {[
-            { label: 'Tổng câu hỏi:', value: `${EXAM_INFO.totalQuestions} câu` },
-            { label: 'Thời gian:', value: EXAM_INFO.duration },
+            { label: 'Tổng câu hỏi:', value: `${displayTotalQuestions} câu` },
+            { label: 'Thời gian:', value: displayDuration },
             { label: 'Hình thức:', value: EXAM_INFO.format },
           ].map((row) => (
             <div
@@ -275,7 +286,7 @@ export default function ExamPage() {
         {/* Start button */}
         <div className="mt-8 flex justify-center">
           <Button
-            onClick={handleStart}
+            onClick={() => void handleStart()}
             disabled={loading}
             className="h-12 gap-2 rounded-xl bg-main px-8 text-base font-semibold text-white hover:bg-[#002244]"
           >

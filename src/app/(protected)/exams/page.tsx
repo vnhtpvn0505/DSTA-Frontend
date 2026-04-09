@@ -24,7 +24,7 @@ const PAGE_SIZE = 10
 export default function ExamsPage() {
   const [activeTab, setActiveTab] = useState<ExamTab>('questions')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(1)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [createCategoryDialogOpen, setCreateCategoryDialogOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -188,14 +188,16 @@ export default function ExamsPage() {
           <div className="rounded-2xl bg-white p-8 shadow-md">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Miền năng lực</h2>
-              <button
-                type="button"
-                onClick={() => setCreateCategoryDialogOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#00284D] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#001a33] cursor-pointer"
-              >
-                <Plus className="h-5 w-5" />
-                Tạo miền năng lực
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCreateCategoryDialogOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#00284D] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#001a33] cursor-pointer"
+                >
+                  <Plus className="h-5 w-5" />
+                  Tạo miền năng lực
+                </button>
+              </div>
             </div>
             <p className="text-gray-600">
               Quản lý các miền năng lực (danh mục) cho ngân hàng câu hỏi.

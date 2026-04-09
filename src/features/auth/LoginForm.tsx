@@ -23,6 +23,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { translateAuthError } from './authErrors'
 import { getDefaultRouteForRole } from '@/lib/authorization'
 import { cn } from '@/lib/utils'
+import { setDevAccessToken } from '@/lib/auth-token'
 
 interface LoginFormProps {
   onSwitchToRegister?: () => void
@@ -54,10 +55,20 @@ export default function LoginForm({
     mutationFn: authService.login,
     onSuccess: async (loginData) => {
       try {
+        const token = authService.getAccessTokenFromLoginResponse(
+          loginData as Record<string, unknown>,
+        )
+        if (token) {
+          setDevAccessToken(token)
+        }
+
         const userFromLogin = authService.getUserFromLoginResponse(
           loginData as Record<string, unknown>,
         )
         const user = userFromLogin ?? (await authService.getProfile())
+        // Cancel any in-flight getMe query so a stale 401 response
+        // cannot clear the store after we've just set the user.
+        await queryClient.cancelQueries({ queryKey: ['me'] })
         setUser(user)
         queryClient.setQueryData(['me'], user)
         router.push(getDefaultRouteForRole(user.role))

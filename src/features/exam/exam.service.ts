@@ -1,6 +1,16 @@
 import axiosInstance, { SKIP_AUTH_REDIRECT } from '@/lib/axios'
 import type { ExamSession } from '@/types/exam'
 
+export interface ExamHistoryItem {
+  id: number
+  score: number
+  totalPoints: number
+  rankName: string
+  isPassed: boolean
+  startedAt: string
+  finishedAt: string
+}
+
 export interface GenerateExamParams {
   categoryId: number
   numberOfQuestions: number
@@ -105,14 +115,41 @@ export const examService = {
    */
   submitExam: async (
     examId: number,
-    body?: { answerIds?: number[] },
+    body?: { saAnswers?: Record<number, string> },
   ): Promise<SubmitExamResult> => {
     const response = await axiosInstance.post<unknown>(
       `/exam/${examId}/submit`,
-      body ?? { answerIds: [] },
+      body ?? {},
       { [SKIP_AUTH_REDIRECT]: true } as Record<string, unknown>,
     )
     return parseSubmitResult(response.data)
+  },
+
+  /**
+   * PATCH /api/v1/exam/:id/progress
+   * Lưu tiến độ bài thi (đáp án đã chọn + thời gian còn lại) — gọi tự động mỗi 30 giây.
+   */
+  saveProgress: async (
+    examId: number,
+    body: { answerIds: Record<number, number>; remainingTime: number; saAnswers?: Record<number, string> },
+  ): Promise<void> => {
+    await axiosInstance.patch(`/exam/${examId}/progress`, body, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+  },
+
+  /**
+   * GET /api/v1/exam/history
+   * Lấy lịch sử các bài thi đã hoàn thành của user hiện tại.
+   */
+  getHistory: async (): Promise<ExamHistoryItem[]> => {
+    const response = await axiosInstance.get<{ code: number; data: ExamHistoryItem[] }>(
+      '/exam/history',
+      { [SKIP_AUTH_REDIRECT]: true } as Record<string, unknown>,
+    )
+    const body = response.data as unknown as { data?: unknown }
+    const items = body?.data
+    return Array.isArray(items) ? (items as ExamHistoryItem[]) : []
   },
 }
 

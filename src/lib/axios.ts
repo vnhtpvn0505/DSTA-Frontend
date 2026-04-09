@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { getDevAccessToken, clearDevAccessToken } from '@/lib/auth-token'
+import { useAuthStore } from '@/stores/auth.store'
 
 const resolveBaseURL = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -23,6 +25,26 @@ const axiosInstance = axios.create({
 /** Request config: set to true to avoid redirect to login on 401 (caller handles error). */
 export const SKIP_AUTH_REDIRECT = 'skipAuthRedirect'
 
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window === 'undefined') {
+    return config
+  }
+
+  // Send stored access token as Bearer on ALL environments.
+  // Cookies cannot be relied on: Next.js rewrites strip Set-Cookie from proxied responses,
+  // so the browser never stores the cookie. The Bearer token in localStorage is the only
+  // reliable auth mechanism when frontend and backend are on different origins/proxied.
+  const token = getDevAccessToken()
+  if (token) {
+    config.headers = config.headers || {}
+    if (!('Authorization' in config.headers)) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  }
+
+  return config
+})
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,6 +54,9 @@ axiosInstance.interceptors.response.use(
       } else {
         const path = window.location.pathname
         if (path !== '/' && !path.startsWith('/login') && !path.startsWith('/register')) {
+          // Clear store AND dev token before redirecting
+          useAuthStore.getState().clearUser()
+          clearDevAccessToken()
           window.location.href = '/'
         }
       }

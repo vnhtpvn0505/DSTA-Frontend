@@ -1,4 +1,5 @@
-import axiosInstance from '@/lib/axios'
+import axiosInstance, { SKIP_AUTH_REDIRECT } from '@/lib/axios'
+import { clearDevAccessToken } from '@/lib/auth-token'
 import type { User, UserProfile } from '@/types/user'
 import type { LoginInput, RegisterInput } from './auth.schema'
 
@@ -46,8 +47,13 @@ export function profileToUser(p: UserProfile): User {
 export const authService = {
   // Get user profile (after login, cookie-based)
   getProfile: async (): Promise<User> => {
-    const response = await axiosInstance.get<{ data: UserProfile }>('/user/profile')
-    const profile = response.data.data ?? response.data
+    const response = await axiosInstance.get('/user/profile', {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Parameters<typeof axiosInstance.get>[1])
+    const responseData = response.data as Record<string, unknown>
+    const inner = responseData?.data as Record<string, unknown> | undefined
+    // Backend returns { data: { user: UserProfile } }
+    const profile = inner?.user ?? inner ?? responseData
     return profileToUser(profile as UserProfile)
   },
 
@@ -78,6 +84,15 @@ export const authService = {
     } catch {
       return null
     }
+  },
+
+  getAccessTokenFromLoginResponse: (
+    loginData: Record<string, unknown> | null | undefined
+  ): string | null => {
+    if (!loginData) return null
+    const data = loginData.data as Record<string, unknown> | undefined
+    const token = data?.accessToken ?? loginData.accessToken
+    return typeof token === 'string' && token.length > 0 ? token : null
   },
 
   // Refresh token (cookie-based, no body needed)
@@ -124,6 +139,10 @@ export const authService = {
 
   // Logout
   logout: async (): Promise<void> => {
-    await axiosInstance.post('/auth/logout');
+    try {
+      await axiosInstance.post('/auth/logout')
+    } finally {
+      clearDevAccessToken()
+    }
   },
 };

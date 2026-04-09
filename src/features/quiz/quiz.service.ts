@@ -9,6 +9,9 @@ import type {
   QuizQuestion,
   QuizQuestionsResponse,
   QuizQuestionsPaginatedResponse,
+  ExamConfig,
+  CreateExamConfigDto,
+  UpdateExamConfigDto,
 } from '@/types/quiz'
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -100,16 +103,19 @@ export const quizService = {
       dataObj?.questions ??
       (data as { content?: QuizQuestion[] }).content
     const rawItems = Array.isArray(rawContent) ? rawContent : []
+    const pagination = dataObj?.pagination as Record<string, unknown> | undefined
 
     if (rawItems.length > 0 || dataObj) {
       items = rawItems as QuizQuestion[]
       const rawTotal =
+        pagination?.total ??
         dataObj?.total ??
         dataObj?.totalElements ??
         (data as { total?: number }).total ??
         items.length
       total = Math.max(0, Number(rawTotal) || 0)
       const rawTotalPages =
+        pagination?.totalPages ??
         dataObj?.totalPages ??
         (data as { totalPages?: number }).totalPages ??
         (limit > 0 ? Math.ceil(total / limit) : 1)
@@ -255,6 +261,74 @@ export const quizService = {
       remainingTime,
       startedAt,
       createdAt: startedAt,
+    }
+  },
+
+  // ─── Exam Config API ────────────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/quiz/exam-configs
+   * Lấy tất cả cấu hình đề thi
+   */
+  getExamConfigs: async (): Promise<ExamConfig[]> => {
+    const response = await axiosInstance.get<unknown>('/quiz/exam-configs', {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const inner = (body?.data as Record<string, unknown>)?.configs ?? body?.data
+    return Array.isArray(inner) ? (inner as ExamConfig[]) : []
+  },
+
+  /**
+   * POST /api/v1/quiz/exam-configs
+   * Tạo cấu hình đề thi mới
+   */
+  createExamConfig: async (dto: CreateExamConfigDto): Promise<ExamConfig> => {
+    const response = await axiosInstance.post<unknown>('/quiz/exam-configs', dto, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * PATCH /api/v1/quiz/exam-configs/:id
+   * Cập nhật cấu hình đề thi
+   */
+  updateExamConfig: async (id: number, dto: UpdateExamConfigDto): Promise<ExamConfig> => {
+    const response = await axiosInstance.patch<unknown>(`/quiz/exam-configs/${id}`, dto, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * DELETE /api/v1/quiz/exam-configs/:id
+   * Xóa cấu hình đề thi (soft delete)
+   */
+  deleteExamConfig: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/quiz/exam-configs/${id}`, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+  },
+
+  /**
+   * GET /api/v1/quiz/exam-configs/active
+   * Lấy cấu hình đề thi đang active. Returns null if none found.
+   */
+  getActiveExamConfig: async (): Promise<ExamConfig | null> => {
+    try {
+      const response = await axiosInstance.get<unknown>('/quiz/exam-configs/active', {
+        [SKIP_AUTH_REDIRECT]: true,
+      } as Record<string, unknown>)
+      const body = response.data as Record<string, unknown>
+      const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+      return config ? (config as ExamConfig) : null
+    } catch {
+      return null
     }
   },
 }
