@@ -4,9 +4,12 @@ import type { ExamSession } from '@/types/exam'
 export interface ExamHistoryItem {
   id: number
   score: number
+  mcScore?: number | null
   totalPoints: number
   rankName: string
   isPassed: boolean
+  /** 'COMPLETED' | 'PENDING_SA_GRADING' */
+  status?: string
   startedAt: string
   finishedAt: string
 }
