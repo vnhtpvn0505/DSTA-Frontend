@@ -251,7 +251,7 @@ export default function TakeExamPage() {
     const pending = submitResult?.hasPendingSa
     setShowResultPopup(false)
     setSubmitResult(null)
-    router.push(pending ? '/dashboard' : '/certificate')
+    router.push(pending ? '/result' : '/certificate')
   }, [router, submitResult])
 
   if (!session) {
