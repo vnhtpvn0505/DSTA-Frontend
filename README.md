@@ -1,6 +1,6 @@
 # VNT - Hệ thống Đánh giá Trực tuyến (Frontend)
 
-Ứng dụng thi trắc nghiệm trực tuyến dành cho học sinh / sinh viên.
+Ứng dụng thi trắc nghiệm trực tuyến dành cho học sinh / sinh viên.....
 
 ## Tech Stack
 
