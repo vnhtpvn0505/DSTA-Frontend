@@ -3,7 +3,7 @@ import { UserRole } from '@/types/user';
 // Define routes that each role can access
 export const ROLE_PERMISSIONS: Record<UserRole | 'guest', string[]> = {
   student: ['/dashboard', '/exam', '/certificate', '/result'],
-  admin: ['/dashboard', '/student', '/exams', '/reports', '/certificate', '/settings', '/result'],
+  admin: ['/dashboard', '/student', '/exams', '/reports', '/certificate', '/settings', '/result', '/grading'],
   guest: ['/', '/verify'],
 };
 
