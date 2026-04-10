@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import RoleGuard from '@/components/common/RoleGuard'
 import {
@@ -50,6 +50,7 @@ function ScoreInput({
 
 function GradingFormContent({ id }: { id: number }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [scores, setScores] = useState<Record<number, number>>({})
   const [comment, setComment] = useState('')
   const [submitted, setSubmitted] = useState<GradeSaResult | null>(null)
@@ -63,6 +64,7 @@ function GradingFormContent({ id }: { id: number }) {
     mutationFn: () =>
       gradingService.submitGrade(id, { saScores: scores, graderComment: comment || undefined }),
     onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['grading-pending'] })
       setSubmitted(result)
     },
   })

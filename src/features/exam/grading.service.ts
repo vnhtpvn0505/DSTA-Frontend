@@ -10,6 +10,9 @@ export interface SaPendingExamItem {
   graderId: number | null
   graderName: string | null
   submittedAt: string
+  /** 'PENDING_SA_GRADING' | 'COMPLETED' */
+  status: string
+  saScore: number | null
 }
 
 export interface SaGradingItem {

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import RoleGuard from '@/components/common/RoleGuard'
 import { gradingService, type SaPendingExamItem, type AdminUser } from '@/features/exam/grading.service'
 import { Button } from '@/components/ui/button'
-import { ClipboardList, UserCheck } from 'lucide-react'
+import { ClipboardList, UserCheck, CheckCircle2, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function formatDate(iso: string) {
@@ -54,11 +54,16 @@ function GradingListContent() {
           <ClipboardList className="h-8 w-8 text-main" />
           <div>
             <h1 className="text-2xl font-bold text-main sm:text-3xl">Chấm điểm tự luận</h1>
-            <p className="mt-1 text-sm text-gray-500">Danh sách bài thi đang chờ chấm điểm tự luận</p>
+            <p className="mt-1 text-sm text-gray-500">Danh sách bài thi tự luận</p>
           </div>
-          <span className="ml-auto rounded-full bg-orange-100 text-orange-700 text-sm font-semibold px-3 py-1">
-            {exams.length} bài chờ chấm
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="rounded-full bg-orange-100 text-orange-700 text-sm font-semibold px-3 py-1">
+              {exams.filter((e) => e.status === 'PENDING_SA_GRADING').length} chờ chấm
+            </span>
+            <span className="rounded-full bg-green-100 text-green-700 text-sm font-semibold px-3 py-1">
+              {exams.filter((e) => e.status === 'COMPLETED').length} đã chấm
+            </span>
+          </div>
         </div>
 
         <div className="rounded-2xl bg-white shadow-sm border border-blue-100 overflow-hidden">
@@ -80,6 +85,7 @@ function GradingListContent() {
                     <th className="px-4 py-3 text-center font-semibold text-main">Số câu TL</th>
                     <th className="px-4 py-3 text-left font-semibold text-main">Ngày nộp</th>
                     <th className="px-4 py-3 text-left font-semibold text-main">Người chấm</th>
+                    <th className="px-4 py-3 text-center font-semibold text-main">Trạng thái</th>
                     <th className="px-4 py-3 text-center font-semibold text-main">Thao tác</th>
                   </tr>
                 </thead>
@@ -96,7 +102,12 @@ function GradingListContent() {
                       </td>
                       <td className="px-4 py-3 text-gray-600">{formatDate(exam.submittedAt)}</td>
                       <td className="px-4 py-3">
-                        {assigningId === exam.id ? (
+                        {exam.status === 'COMPLETED' ? (
+                          <span className="flex items-center gap-1 text-sm text-green-700">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {exam.graderName ?? 'Admin'}
+                          </span>
+                        ) : assigningId === exam.id ? (
                           <div className="flex items-center gap-2">
                             <select
                               className="border border-gray-200 rounded-md text-sm px-2 py-1 focus:outline-none focus:ring-1 focus:ring-main"
@@ -135,12 +146,31 @@ function GradingListContent() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
+                        {exam.status === 'COMPLETED' ? (
+                          <span className="flex items-center justify-center gap-1 text-sm text-green-600 font-semibold">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {exam.mcScore + (exam.saScore ?? 0)} điểm
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center gap-1 text-sm text-orange-600 font-medium">
+                            <Clock className="h-3.5 w-3.5" />
+                            Chờ chấm
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
                         <Button
                           size="sm"
-                          className="bg-main hover:bg-main/90 text-white text-xs h-8"
+                          className={cn(
+                            'text-xs h-8',
+                            exam.status === 'COMPLETED'
+                              ? 'bg-gray-100 text-gray-500 cursor-not-allowed hover:bg-gray-100'
+                              : 'bg-main hover:bg-main/90 text-white',
+                          )}
+                          disabled={exam.status === 'COMPLETED'}
                           onClick={() => router.push(`/grading/${exam.id}`)}
                         >
-                          Chấm điểm
+                          {exam.status === 'COMPLETED' ? 'Đã chấm' : 'Chấm điểm'}
                         </Button>
                       </td>
                     </tr>
