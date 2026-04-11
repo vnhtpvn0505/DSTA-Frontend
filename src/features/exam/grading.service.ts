@@ -21,6 +21,8 @@ export interface SaGradingItem {
   modelAnswer: string
   studentAnswer: string
   currentScore: number | null
+  /** Max actual points for this slot (from practicalQuestions config, fallback 10) */
+  maxScore: number
 }
 
 export interface SaGradingDetail {
@@ -30,6 +32,8 @@ export interface SaGradingDetail {
   saItems: SaGradingItem[]
   mcScore: number
   graderComment: string | null
+  /** Total possible SA points = sum of practicalQuestions[].actualScore */
+  totalSaPoints: number
 }
 
 export interface GradeSaResult {
