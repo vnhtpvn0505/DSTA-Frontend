@@ -74,7 +74,13 @@ function GradingFormContent({ id }: { id: number }) {
     detail.saItems.length > 0 &&
     detail.saItems.every((item: SaGradingItem) => scores[item.saQuestionId] != null)
 
-  const totalSa = Object.values(scores).reduce((s, v) => s + v, 0)
+  // Weighted total: convert each 0–10 input to actual points using item.maxScore
+  const totalSaWeighted = detail
+    ? detail.saItems.reduce((sum, item) => {
+        const input = scores[item.saQuestionId]
+        return sum + (input != null ? Math.round((input / 10) * item.maxScore) : 0)
+      }, 0)
+    : 0
 
   if (isLoading) {
     return (
@@ -175,7 +181,7 @@ function GradingFormContent({ id }: { id: number }) {
           <div className="ml-auto text-right">
             <div className="text-xs text-gray-400 uppercase tracking-wide">Điểm TL hiện tại</div>
             <div className="font-bold text-2xl text-main">
-              {totalSa} <span className="text-base font-normal text-gray-400">/ {detail.saItems.length * MAX_SCORE_PER_QUESTION}</span>
+              {totalSaWeighted} <span className="text-base font-normal text-gray-400">/ {detail.totalSaPoints}</span>
             </div>
           </div>
         </div>
@@ -213,7 +219,14 @@ function GradingFormContent({ id }: { id: number }) {
               </div>
 
               <div>
-                <div className="text-xs font-medium text-gray-500 mb-2">Điểm (0–{MAX_SCORE_PER_QUESTION})</div>
+                <div className="text-xs font-medium text-gray-500 mb-2">
+                  Điểm (0–{MAX_SCORE_PER_QUESTION})
+                  <span className="ml-2 text-gray-400 font-normal">
+                    ≈ {scores[item.saQuestionId] != null
+                      ? Math.round((scores[item.saQuestionId]! / 10) * item.maxScore)
+                      : 0} / {item.maxScore} điểm thực
+                  </span>
+                </div>
                 <ScoreInput
                   value={scores[item.saQuestionId] ?? null}
                   onChange={(v) => setScores((prev) => ({ ...prev, [item.saQuestionId]: v }))}
