@@ -220,6 +220,72 @@ export const quizService = {
   },
 
   /**
+   * PATCH /api/v1/quiz/categories/:id
+   * Cập nhật miền năng lực
+   */
+  updateCategory: async (id: number, payload: { name?: string; description?: string }): Promise<void> => {
+    await axiosInstance.patch(`/quiz/categories/${id}`, payload)
+  },
+
+  /**
+   * DELETE /api/v1/quiz/categories/:id
+   * Xóa miền năng lực (soft delete)
+   */
+  deleteCategory: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/quiz/categories/${id}`)
+  },
+
+  /**
+   * GET /api/v1/quiz/questions/:id
+   * Lấy chi tiết câu hỏi theo ID (bao gồm options)
+   */
+  getQuestionById: async (id: number): Promise<{
+    id: number
+    content: string
+    level: string
+    category: { id: number; name: string } | null
+    options: { id: number; optionText: string; isCorrect: boolean }[]
+  }> => {
+    const response = await axiosInstance.get<unknown>(`/quiz/questions/${id}`)
+    const body = response.data as Record<string, unknown>
+    const question = (body?.data as Record<string, unknown>)?.question ?? body?.data
+    return question as ReturnType<typeof quizService.getQuestionById> extends Promise<infer T> ? T : never
+  },
+
+  /**
+   * PATCH /api/v1/quiz/questions/:id
+   * Cập nhật câu hỏi và đáp án
+   */
+  updateQuestion: async (
+    id: number,
+    payload: {
+      content?: string
+      level?: 'Easy' | 'Medium' | 'Hard'
+      categoryId?: number
+      options?: { optionText: string; isCorrect: boolean }[]
+    },
+  ): Promise<void> => {
+    const body = {
+      ...payload,
+      ...(payload.options && {
+        options: payload.options.map((o) => ({
+          optionText: String(o?.optionText ?? '').trim(),
+          isCorrect: Boolean(o?.isCorrect),
+        })),
+      }),
+    }
+    await axiosInstance.patch(`/quiz/questions/${id}`, body)
+  },
+
+  /**
+   * DELETE /api/v1/quiz/questions/:id
+   * Xóa câu hỏi (soft delete)
+   */
+  deleteQuestion: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/quiz/questions/${id}`)
+  },
+
+  /**
    * POST /api/v1/quiz/questions
    * Tạo câu hỏi mới (UC22)
    */

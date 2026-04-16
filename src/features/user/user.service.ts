@@ -146,4 +146,139 @@ export const userService = {
     const items = unwrap<LevelDistributionItem[]>(res.data)
     return Array.isArray(items) ? items : []
   },
+
+  // ── Teacher CRUD ────────────────────────────────────────────────────────────
+
+  getTeachers: async (
+    page = 1,
+    limit = 20,
+  ): Promise<{ items: TeacherItem[]; pagination: PaginationMeta }> => {
+    const res = await axiosInstance.get<unknown>(`/user/teachers?page=${page}&limit=${limit}`)
+    const data = unwrap<{ items: TeacherItem[]; pagination: PaginationMeta }>(res.data)
+    return { items: data?.items ?? [], pagination: data?.pagination ?? { total: 0, page, limit, totalPages: 1 } }
+  },
+
+  createTeacher: async (payload: CreateTeacherPayload): Promise<TeacherItem> => {
+    const res = await axiosInstance.post<unknown>('/user/teachers', payload)
+    return unwrap<TeacherItem>(res.data)
+  },
+
+  updateTeacher: async (id: number, payload: UpdateTeacherPayload): Promise<TeacherItem> => {
+    const res = await axiosInstance.patch<unknown>(`/user/teachers/${id}`, payload)
+    return unwrap<TeacherItem>(res.data)
+  },
+
+  deleteTeacher: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/user/teachers/${id}`)
+  },
+}
+
+export interface PaginationMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface TeacherItem {
+  id: number
+  username: string
+  firstName: string
+  email: string
+  phoneNumber: string | null
+  facultyName: string | null
+  createdAt: string
+}
+
+export interface CreateTeacherPayload {
+  username: string
+  firstName: string
+  email: string
+  password: string
+  phoneNumber?: string
+  facultyName?: string
+}
+
+export interface UpdateTeacherPayload {
+  firstName?: string
+  phoneNumber?: string
+  facultyName?: string
+}
+
+// ── ClassItem ─────────────────────────────────────────────────────────────────
+
+export interface ClassItem {
+  id: number
+  name: string
+  code: string
+  academicYear: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface CreateClassPayload {
+  name: string
+  code: string
+  academicYear?: string
+}
+
+export interface UpdateClassPayload {
+  name?: string
+  code?: string
+  academicYear?: string
+  isActive?: boolean
+}
+
+// ── CohortItem ────────────────────────────────────────────────────────────────
+
+export interface CohortItem {
+  id: number
+  name: string
+  year: string | null
+  description: string | null
+  createdAt: string
+}
+
+export interface CreateCohortPayload {
+  name: string
+  year?: string
+  description?: string
+}
+
+export interface UpdateCohortPayload {
+  name?: string
+  year?: string
+  description?: string
+}
+
+// ── ExamPeriodItem ────────────────────────────────────────────────────────────
+
+export type ExamPeriodStatus = 'scheduled' | 'active' | 'ended'
+
+export interface ExamPeriodItem {
+  id: number
+  name: string
+  startDate: string
+  endDate: string
+  examConfigId: number | null
+  allowedClassIds: number[] | null
+  status: ExamPeriodStatus
+  createdAt: string
+}
+
+export interface CreateExamPeriodPayload {
+  name: string
+  startDate: string
+  endDate: string
+  examConfigId?: number
+  allowedClassIds?: number[]
+}
+
+export interface UpdateExamPeriodPayload {
+  name?: string
+  startDate?: string
+  endDate?: string
+  examConfigId?: number
+  allowedClassIds?: number[]
+  status?: ExamPeriodStatus
 }

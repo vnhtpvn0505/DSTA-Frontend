@@ -11,6 +11,10 @@ import {
   FileBarChart,
   Settings,
   ClipboardCheck,
+  GraduationCap,
+  School,
+  BookOpen,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +28,10 @@ const navItems = [
   { href: '/exams', label: 'Quản lý bài thi', icon: FileQuestion },
   { href: '/grading', label: 'Chấm điểm tự luận', icon: ClipboardCheck },
   { href: '/reports', label: 'Báo cáo', icon: FileBarChart },
+  { href: '/teachers', label: 'Quản lý giảng viên', icon: GraduationCap },
+  { href: '/classes', label: 'Quản lý lớp học', icon: School },
+  { href: '/cohorts', label: 'Khoá đào tạo', icon: BookOpen },
+  { href: '/exam-periods', label: 'Kỳ thi', icon: CalendarDays },
   { href: '/settings', label: 'Cài đặt', icon: Settings },
 ];
 

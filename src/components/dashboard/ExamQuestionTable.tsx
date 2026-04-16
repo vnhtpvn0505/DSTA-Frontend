@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, Filter, Search, X } from 'lucide-react';
+import { Eye, Filter, Pencil, Search, Trash2, X } from 'lucide-react';
 import type { QuestionTableRow } from '@/types/exam';
 
 interface ExamQuestionTableProps {
   data: QuestionTableRow[];
   onView?: (row: QuestionTableRow) => void;
+  onEdit?: (row: QuestionTableRow) => void;
+  onDelete?: (row: QuestionTableRow) => void;
 }
 
 const DEFAULT_FILTERS = ['Điểm số', 'Bậc năng lực'];
@@ -14,6 +16,8 @@ const DEFAULT_FILTERS = ['Điểm số', 'Bậc năng lực'];
 export default function ExamQuestionTable({
   data,
   onView,
+  onEdit,
+  onDelete,
 }: ExamQuestionTableProps) {
   const [filters, setFilters] = useState<string[]>(DEFAULT_FILTERS);
   const [search, setSearch] = useState('');
@@ -117,14 +121,32 @@ export default function ExamQuestionTable({
                   {row.score}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onView?.(row)}
-                    className="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
-                    aria-label="Xem chi tiết"
-                  >
-                    <Eye className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onView?.(row)}
+                      className="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
+                      aria-label="Xem chi tiết"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onEdit?.(row)}
+                      className="inline-flex items-center justify-center rounded-lg p-2 text-blue-500 hover:bg-blue-50 hover:text-blue-700 cursor-pointer"
+                      aria-label="Chỉnh sửa câu hỏi"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete?.(row)}
+                      className="inline-flex items-center justify-center rounded-lg p-2 text-red-500 hover:bg-red-50 hover:text-red-700 cursor-pointer"
+                      aria-label="Xóa câu hỏi"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
