@@ -21,6 +21,7 @@ import ExamSAInput from '@/components/exam/ExamSAInput'
 import { examService } from '@/features/exam/exam.service'
 import type { SubmitExamResult } from '@/features/exam/exam.service'
 import type { ExamSession, SaQuestion } from '@/types/exam'
+import { useExamProctor } from '@/hooks/useExamProctor'
 
 export default function TakeExamPage() {
   const router = useRouter()
@@ -43,6 +44,8 @@ export default function TakeExamPage() {
   const [allQuestions, setAllQuestions] = useState<
     Array<{ id: number; content: string; type: 'mc' | 'sa'; options?: import('@/types/exam').ExamOption[] }>
   >([])
+  const [violationCount, setViolationCount] = useState(0)
+  const [proctorActive, setProctorActive] = useState(true)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const autosaveRef = useRef<NodeJS.Timeout | null>(null)
   const sessionRef = useRef<ExamSession | null>(null)
@@ -213,6 +216,16 @@ export default function TakeExamPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  useExamProctor({
+    examId: session?.id ?? NaN,
+    enabled: proctorActive && !!session && !submitResult,
+    onViolation: (count) => setViolationCount(count),
+    onAutoSubmit: () => {
+      setProctorActive(false)
+      handleSubmit()
+    },
+  })
+
   const handleSubmit = useCallback(async () => {
     const s = sessionRef.current
     if (!s || !Number.isFinite(examId)) return
@@ -238,6 +251,7 @@ export default function TakeExamPage() {
         saAnswers: Object.keys(saAnswers).length > 0 ? saAnswers : undefined,
       })
       sessionStorage.removeItem('examSession')
+      setProctorActive(false)
       setSubmitResult(result)
       setShowResultPopup(true)
     } catch {
@@ -319,6 +333,17 @@ export default function TakeExamPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F5F7FA]">
+      {/* Violation warning banner */}
+      {violationCount > 0 && (
+        <div className="flex items-center gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-white">
+          <span>⚠️</span>
+          <span>
+            Cảnh báo vi phạm ({violationCount}/3): Rời khỏi cửa sổ thi có thể dẫn đến nộp bài tự
+            động.
+          </span>
+        </div>
+      )}
+
       {/* Header: Assessment title + timer + user */}
       <ExamHeader
         questionNumber={currentIndex + 1}

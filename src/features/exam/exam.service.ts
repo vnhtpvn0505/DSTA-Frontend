@@ -154,6 +154,20 @@ export const examService = {
     const items = body?.data
     return Array.isArray(items) ? (items as ExamHistoryItem[]) : []
   },
+
+  /**
+   * POST /api/v1/exam/{id}/violation
+   * Report a proctoring violation (tab switch, window blur, copy-paste).
+   * Returns { violationCount, autoSubmitted }.
+   */
+  reportViolation: async (
+    examId: number,
+    type: 'tab_switch' | 'window_blur' | 'copy_paste',
+  ): Promise<{ violationCount: number; autoSubmitted: boolean }> => {
+    const response = await axiosInstance.post<unknown>(`/exam/${examId}/violation`, { type })
+    const body = response.data as { data?: { violationCount: number; autoSubmitted: boolean } }
+    return body.data ?? { violationCount: 0, autoSubmitted: false }
+  },
 }
 
 export interface SubmitExamResult {
