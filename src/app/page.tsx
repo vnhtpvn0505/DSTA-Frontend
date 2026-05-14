@@ -10,10 +10,10 @@ import RegisterForm from '@/features/auth/RegisterForm';
 import FormForgetPassword from '@/features/auth/FormForgetPassword';
 import { AnimatePresence, motion } from 'framer-motion';
 
-import bgMain from '@/asssets/images/bg_main.png';
+import bgMain from '@/asssets/images/bg_main.svg';
 
-const BG_WIDTH = 1323.3382568359375;
-const BG_HEIGHT = 602;
+const BG_WIDTH = '100vw';
+const BG_HEIGHT = '100vh';
 
 const formVariants = {
   initial: {
@@ -67,11 +67,11 @@ export default function Home() {
       <div className="relative max-w-full shrink-0">
         <Image
           src={bgMain}
-          width={BG_WIDTH}
-          height={BG_HEIGHT}
+          width={100}
+          height={100}
           alt=""
-          className="object-contain pointer-events-none"
-          style={{ width: '100%', height: 'auto' }}
+          className="object-cover pointer-events-none"
+          style={{ width: '100vw', height: '100vh' }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative w-full max-w-md px-4">

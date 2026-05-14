@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import logo from '@/asssets/images/logo.png';
+import logo from '@/asssets/images/logo-black.svg';
 import {
   LayoutDashboard,
   Users,
@@ -19,7 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const SIDEBAR_WIDTH = 231;
-const SYSTEM_NAME = 'Hệ thống đánh giá năng lực số';
+const SYSTEM_NAME = 'HỆ THỐNG ĐÁNH GIÁ NĂNG LỰC SỐ';
 const FOOTER_TEXT = 'Admin Portal v1.0';
 
 const navItems = [
@@ -54,7 +54,7 @@ export default function AdminSidebar() {
               className="object-contain"
             />
           </div>
-          <p className="mt-4 text-center text-sm font-medium leading-tight text-white max-w-[149px] mx-auto">
+          <p className="mt-4 text-center text-l font-bold leading-tight text-white max-w-[149px] mx-auto color-system-textsecondary">
             {SYSTEM_NAME}
           </p>
         </div>

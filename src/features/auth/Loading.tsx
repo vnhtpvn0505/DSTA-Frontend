@@ -1,43 +1,25 @@
 'use client';
 
 import Image from 'next/image';
-import { motion } from 'framer-motion';
-import logo from '@/asssets/images/logo.png';
+import logo from '@/asssets/images/logo-white.svg';
 
-const TITLE = 'Hệ thống đánh giá năng lực số trường đại học Nguyễn Trãi';
+const TITLE = 'HỆ THỐNG ĐÁNH GIÁ\nNĂNG LỰC SỐ';
 
 const Loading = () => {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center px-6 bg-main">
-      {/* Chữ xuất hiện dần từ trái sang phải */}
-      <div className="max-w-[932px] w-full overflow-hidden">
-        <motion.h1
-          className="text-center font-medium text-white max-w-[932px] text-5xl"
-          initial={{ clipPath: 'inset(0 100% 0 0)' }}
-          animate={{ clipPath: 'inset(0 0% 0 0)' }}
-          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          {TITLE}
-        </motion.h1>
+      <div className="max-w-[932px] w-full">
+        <h1 className="text-center font-medium text-white max-w-[932px] text-5xl">{TITLE}</h1>
       </div>
 
-      {/* Logo với hiệu ứng loé sáng từ trái sang phải */}
-      <div className="relative mt-[169px] h-[330px] w-[465px] shrink-0 overflow-hidden">
+      <div className="relative mt-28 h-[min(48vh,480px)] w-[min(96vw,680px)] shrink-0 sm:mt-32 sm:h-[500px] sm:w-[720px]">
         <Image
           src={logo}
-          alt="Đại học Nguyễn Trãi"
+          alt="Đại học UMT"
           fill
-          sizes="(max-width: 768px) 100vw, 465px"
+          sizes="(max-width: 768px) 96vw, 720px"
           className="object-contain pointer-events-none"
           priority
-        />
-        <div
-          className="animate-logo-shine absolute inset-0 z-10 pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(105deg, transparent 0%, transparent 35%, rgba(255,255,255,0.25) 50%, transparent 65%, transparent 100%)',
-            width: '60%',
-          }}
         />
       </div>
     </div>

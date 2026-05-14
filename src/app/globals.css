@@ -8,9 +8,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-main: #003562;
+  --color-main: #1F366C;
   --color-semantic-info: #0EA5E9;
-  --color-safety-orange: #FF6A00;
+  --color-safety-orange: #60BDDC;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -22,25 +22,14 @@
   }
 }
 
+ .color-system-textsecondary{
+  color: var(--color-safety-orange);
+ }
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', sans-serif;
-}
-
-/* Logo shine – loé sáng từ trái sang phải */
-@keyframes logo-shine {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(200%);
-  }
-}
-
-.animate-logo-shine {
-  animation: logo-shine 2s ease-in-out infinite;
 }
 
 /* Form switch animation (login ↔ register) – premium, smooth transition */

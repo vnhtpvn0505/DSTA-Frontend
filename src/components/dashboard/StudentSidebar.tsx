@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import logo from '@/asssets/images/logo.png'
+import logo from '@/asssets/images/logo-black.svg'
 import { LayoutDashboard, History, Award } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const SIDEBAR_WIDTH = 231
-const SYSTEM_NAME = 'Hệ thống đánh giá\nnăng lực số'
+const SYSTEM_NAME = 'HỆ THỐNG ĐÁNH GIÁ\nNĂNG LỰC SỐ'
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -36,7 +36,7 @@ export default function StudentSidebar() {
               priority
             />
           </div>
-          <p className="mt-3 text-center text-xs font-medium leading-tight text-gray-500 whitespace-pre-line">
+          <p className="mt-3 text-center text-l font-bold leading-tight text-gray-500 whitespace-pre-line color-system-textsecondary">
             {SYSTEM_NAME}
           </p>
         </div>
