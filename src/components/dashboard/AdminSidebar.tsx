@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import logo from '@/asssets/images/logo-black.svg';
+import logo from '@/asssets/images/logo-white.svg';
 import {
   LayoutDashboard,
   Users,
