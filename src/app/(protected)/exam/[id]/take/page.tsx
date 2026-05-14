@@ -52,6 +52,7 @@ export default function TakeExamPage() {
   const answersRef = useRef<Record<number, number | string>>({})
   const allQuestionsRef = useRef(allQuestions)
   const timeRemainingRef = useRef(0)
+  const handleSubmitRef = useRef<(() => Promise<void>) | null>(null)
   const prevNextRef = useRef<{
     goPrev: () => void
     goNext: () => void
@@ -222,7 +223,7 @@ export default function TakeExamPage() {
     onViolation: (count) => setViolationCount(count),
     onAutoSubmit: () => {
       setProctorActive(false)
-      handleSubmit()
+      handleSubmitRef.current?.()
     },
   })
 
@@ -261,12 +262,25 @@ export default function TakeExamPage() {
     }
   }, [examId])
 
+  handleSubmitRef.current = handleSubmit
+
   const handleCloseResultPopup = useCallback(() => {
     const pending = submitResult?.hasPendingSa
     setShowResultPopup(false)
     setSubmitResult(null)
     router.push(pending ? '/result' : '/certificate')
   }, [router, submitResult])
+
+  // Auto-redirect when exam is auto-submitted due to violations
+  useEffect(() => {
+    if (submitResult && showResultPopup) {
+      // Auto-close result popup and redirect after 2 seconds
+      const timer = setTimeout(() => {
+        handleCloseResultPopup()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [submitResult, showResultPopup, handleCloseResultPopup])
 
   if (!session) {
     return (
