@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/asssets/images/logo.png'
-import { LayoutDashboard, History, Award } from 'lucide-react'
+import { LayoutDashboard, History, Award, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const SIDEBAR_WIDTH = 231
@@ -12,6 +12,7 @@ const SYSTEM_NAME = 'Hệ thống đánh giá\nnăng lực số'
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+  { href: '/practice', label: 'Luyện tập', icon: BookOpen },
   { href: '/result', label: 'Lịch sử bài thi', icon: History },
   { href: '/certificate', label: 'Chứng chỉ', icon: Award },
 ]
