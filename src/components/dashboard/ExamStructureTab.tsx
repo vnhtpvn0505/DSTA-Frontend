@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Pencil, Trash2, Save, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Save, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { quizService } from '@/features/quiz/quiz.service'
-import type { ExamConfig } from '@/types/quiz'
 
 /**
  * Cấu trúc đề thi — UI theo Figma DSAT (node-id=463-7631).
@@ -78,7 +77,13 @@ function parseRow(row: DistributionRow): [number, number, number, number] {
   ]
 }
 
-export default function ExamStructureTab() {
+interface ExamStructureTabProps {
+  /** ID of the exam config being edited, or null to create a new one. */
+  configId: number | null
+  onBack: () => void
+}
+
+export default function ExamStructureTab({ configId, onBack }: ExamStructureTabProps) {
   const queryClient = useQueryClient()
   const [examMode, setExamMode] = useState<ExamMode>('standard')
   const [editMcq, setEditMcq] = useState(false)
@@ -96,8 +101,6 @@ export default function ExamStructureTab() {
     { id: '2', name: 'Câu 2', level: 'Mức Sáng tạo', ratioPercent: 60, actualScore: 240 },
   ])
 
-  // Track the config currently loaded from the server
-  const [selectedConfigId, setSelectedConfigId] = useState<number | null>(null)
   const [configName, setConfigName] = useState('Đề chuẩn')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveStatusTimeout = useRef<NodeJS.Timeout | null>(null)
@@ -108,19 +111,21 @@ export default function ExamStructureTab() {
     queryFn: quizService.getCategories,
   })
 
-  // Load existing configs from API
-  const { data: existingConfigs = [] } = useQuery<ExamConfig[]>({
-    queryKey: ['exam-configs'],
-    queryFn: quizService.getExamConfigs,
+  // Load the specific config being edited (skip when creating a new one)
+  const { data: loadedConfig } = useQuery({
+    queryKey: ['exam-config', configId],
+    queryFn: () => quizService.getExamConfigById(configId!),
+    enabled: configId != null,
   })
 
-  // Seed distribution from STANDARD_MATRIX when categories arrive (if no config loaded yet)
+  // Seed distribution from STANDARD_MATRIX when categories arrive (if creating new / no config loaded yet)
   const categoriesSeeded = useRef(false)
-  const configsApplied = useRef(false)
+  const configApplied = useRef(false)
 
   useEffect(() => {
     if (categoriesSeeded.current || categories.length === 0) return
-    if (configsApplied.current) {
+    if (configId != null) {
+      // Editing an existing config — wait for it to load instead of seeding standard matrix
       categoriesSeeded.current = true
       return
     }
@@ -130,28 +135,24 @@ export default function ExamStructureTab() {
         categories.map((cat, i) => [cat.id, [...(STANDARD_MATRIX[i] ?? ['0', '0', '0', '0'])] as DistributionRow])
       )
     )
-  }, [categories])
+  }, [categories, configId])
 
-  // Populate local state from the first active config (runs once when configs arrive)
+  // Populate local state from the loaded config (runs once when it arrives)
   useEffect(() => {
-    if (configsApplied.current || existingConfigs.length === 0) return
-    configsApplied.current = true
-    const active = existingConfigs.find((c) => c.isActive) ?? existingConfigs[0]
-    if (!active) return
-    setSelectedConfigId(active.id)
-    setConfigName(active.name)
-    setExamMode(active.examMode)
-    setGeneralConfig(active.generalConfig)
-    setWeightConfig(active.weights)
+    if (configApplied.current || !loadedConfig) return
+    configApplied.current = true
+    setConfigName(loadedConfig.name)
+    setExamMode(loadedConfig.examMode)
+    setGeneralConfig(loadedConfig.generalConfig)
+    setWeightConfig(loadedConfig.weights)
     // Deserialize DistributionItem[] → Record<categoryId, counts>
-    // Guard against old name-keyed Record format still in DB
-    if (Array.isArray(active.distribution)) {
+    if (Array.isArray(loadedConfig.distribution)) {
       setDistribution(
-        Object.fromEntries(active.distribution.map((item) => [item.categoryId, item.counts]))
+        Object.fromEntries(loadedConfig.distribution.map((item) => [item.categoryId, item.counts]))
       )
     }
-    setPracticalQuestions(active.practicalQuestions)
-  }, [existingConfigs])
+    setPracticalQuestions(loadedConfig.practicalQuestions)
+  }, [loadedConfig])
 
   // Save mutation
   const saveMutation = useMutation({
@@ -170,17 +171,19 @@ export default function ExamStructureTab() {
         practicalQuestions,
         isActive: true,
       }
-      if (selectedConfigId != null) {
-        return quizService.updateExamConfig(selectedConfigId, dto)
+      if (configId != null) {
+        return quizService.updateExamConfig(configId, dto)
       }
       return quizService.createExamConfig(dto)
     },
-    onSuccess: (saved) => {
-      setSelectedConfigId(saved.id)
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exam-configs'] })
       setSaveStatus('saved')
       if (saveStatusTimeout.current) clearTimeout(saveStatusTimeout.current)
-      saveStatusTimeout.current = setTimeout(() => setSaveStatus('idle'), 3000)
+      saveStatusTimeout.current = setTimeout(() => {
+        setSaveStatus('idle')
+        onBack()
+      }, 800)
     },
     onError: () => {
       setSaveStatus('error')
@@ -297,6 +300,15 @@ export default function ExamStructureTab() {
 
   return (
     <div className="space-y-6 pb-8">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 cursor-pointer"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Quay lại danh sách cấu hình
+      </button>
+
       {/* Chế độ đề thi + Tên cấu hình + Nút lưu */}
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <span className="text-sm font-medium text-gray-700">Chế độ đề thi:</span>

@@ -77,6 +77,8 @@ export interface ExamDistributionItem {
   counts: [string, string, string, string]
 }
 
+export type ExamConfigStatus = 'draft' | 'published' | 'inactive'
+
 export interface ExamConfig {
   id: number
   name: string
@@ -87,6 +89,7 @@ export interface ExamConfig {
   weights: ExamWeightConfig
   practicalQuestions: ExamPracticalQuestion[]
   isActive: boolean
+  status: ExamConfigStatus
   createdAt: string
   updatedAt: string
 }
@@ -103,3 +106,37 @@ export interface CreateExamConfigDto {
 }
 
 export type UpdateExamConfigDto = Partial<CreateExamConfigDto>
+
+export interface ExamConfigPreview {
+  generalConfig: ExamGeneralConfig
+  distribution: ExamDistributionItem[]
+  sampleQuestions: {
+    categoryId: number
+    skillName: string
+    level: string
+    question: { id: number; content: string }
+  }[]
+}
+
+// ─── Level (thang điểm / mức phân loại) ────────────────────────────────────
+
+export interface Level {
+  id: number
+  rankName: string
+  scoreRange: string
+  description?: string | null
+  minScore?: number | null
+  maxScore?: number | null
+  rangeTotal?: number | null
+}
+
+export interface CreateLevelDto {
+  rankName: string
+  scoreRange: string
+  description?: string
+  minScore?: number
+  maxScore?: number
+  rangeTotal?: number
+}
+
+export type UpdateLevelDto = Partial<CreateLevelDto>

@@ -5,13 +5,16 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import ExamQuestionTable from '@/components/dashboard/ExamQuestionTable'
 import ExamStructureTab from '@/components/dashboard/ExamStructureTab'
+import ExamConfigListTable from '@/components/dashboard/ExamConfigListTable'
 import Pagination from '@/components/dashboard/Pagination'
 import CreateQuestionDialog from '@/components/dashboard/CreateQuestionDialog'
 import CreateCategoryDialog from '@/components/dashboard/CreateCategoryDialog'
 import EditQuestionDialog from '@/components/dashboard/EditQuestionDialog'
 import EditCategoryDialog from '@/components/dashboard/EditCategoryDialog'
+import LevelFormDialog from '@/components/dashboard/LevelFormDialog'
 import { quizService } from '@/features/quiz/quiz.service'
 import type { QuestionTableRow } from '@/types/exam'
+import type { Level } from '@/types/quiz'
 
 type ExamTab = 'questions' | 'structure' | 'settings'
 
@@ -33,14 +36,25 @@ export default function ExamsPage() {
   const [editCategoryTarget, setEditCategoryTarget] = useState<{ id: number; name: string; description?: string } | null>(null)
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null)
   const [deleteCategoryId, setDeleteCategoryId] = useState<number | null>(null)
+  const [selectedExamConfigId, setSelectedExamConfigId] = useState<number | 'new' | null>(null)
+  const [levelDialogOpen, setLevelDialogOpen] = useState(false)
+  const [editLevelTarget, setEditLevelTarget] = useState<Level | null>(null)
+  const [deleteLevelId, setDeleteLevelId] = useState<number | null>(null)
   const queryClient = useQueryClient()
 
   const { data: categoriesData } = useQuery({
     queryKey: ['quiz-categories'],
     queryFn: quizService.getCategories,
-    enabled: activeTab === 'questions',
+    enabled: activeTab === 'questions' || activeTab === 'settings',
   })
   const categories = categoriesData ?? []
+
+  const { data: levelsData } = useQuery({
+    queryKey: ['quiz-levels'],
+    queryFn: quizService.getLevels,
+    enabled: activeTab === 'settings',
+  })
+  const levels = levelsData ?? []
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['quiz-questions', selectedCategoryId, currentPage],
@@ -86,6 +100,14 @@ export default function ExamsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz-categories'] })
       setDeleteCategoryId(null)
+    },
+  })
+
+  const deleteLevelMutation = useMutation({
+    mutationFn: (id: number) => quizService.deleteLevel(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-levels'] })
+      setDeleteLevelId(null)
     },
   })
 
@@ -207,7 +229,17 @@ export default function ExamsPage() {
       )}
       {activeTab === 'structure' && (
         <div key="structure" className="animate-tab-content-enter">
-          <ExamStructureTab />
+          {selectedExamConfigId === null ? (
+            <ExamConfigListTable
+              onSelect={setSelectedExamConfigId}
+              onCreateNew={() => setSelectedExamConfigId('new')}
+            />
+          ) : (
+            <ExamStructureTab
+              configId={selectedExamConfigId === 'new' ? null : selectedExamConfigId}
+              onBack={() => setSelectedExamConfigId(null)}
+            />
+          )}
         </div>
       )}
       {activeTab === 'settings' && (
@@ -258,6 +290,90 @@ export default function ExamsPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mt-6 rounded-2xl bg-white p-8 shadow-md">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Mức phân loại</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditLevelTarget(null)
+                  setLevelDialogOpen(true)
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#00284D] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#001a33] cursor-pointer"
+              >
+                <Plus className="h-5 w-5" />
+                Tạo mức phân loại
+              </button>
+            </div>
+            {levels.length === 0 ? (
+              <p className="text-sm text-gray-500">Chưa có mức phân loại nào. Tạo mới để bắt đầu.</p>
+            ) : (
+              <div className="divide-y divide-gray-100 rounded-xl border border-gray-200">
+                {levels.map((lvl) => (
+                  <div key={lvl.id} className="flex items-center justify-between px-5 py-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {lvl.rankName} <span className="text-gray-500">({lvl.scoreRange})</span>
+                      </p>
+                      {lvl.description && (
+                        <p className="mt-0.5 text-xs text-gray-500">{lvl.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditLevelTarget(lvl)
+                          setLevelDialogOpen(true)
+                        }}
+                        className="inline-flex items-center justify-center rounded-lg p-2 text-blue-500 hover:bg-blue-50 hover:text-blue-700 cursor-pointer"
+                        aria-label="Chỉnh sửa mức phân loại"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteLevelId(lvl.id)}
+                        className="inline-flex items-center justify-center rounded-lg p-2 text-red-500 hover:bg-red-50 hover:text-red-700 cursor-pointer"
+                        aria-label="Xóa mức phân loại"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <LevelFormDialog
+        open={levelDialogOpen}
+        onOpenChange={setLevelDialogOpen}
+        level={editLevelTarget}
+      />
+
+      {deleteLevelId != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Xóa mức phân loại</h3>
+            <p className="mt-2 text-sm text-gray-600">Bạn có chắc muốn xóa mức phân loại này?</p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteLevelId(null)}
+                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >Hủy</button>
+              <button
+                type="button"
+                onClick={() => deleteLevelMutation.mutate(deleteLevelId)}
+                disabled={deleteLevelMutation.isPending}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >{deleteLevelMutation.isPending ? 'Đang xóa...' : 'Xóa'}</button>
+            </div>
           </div>
         </div>
       )}

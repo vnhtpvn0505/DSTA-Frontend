@@ -12,6 +12,10 @@ import type {
   ExamConfig,
   CreateExamConfigDto,
   UpdateExamConfigDto,
+  ExamConfigPreview,
+  Level,
+  CreateLevelDto,
+  UpdateLevelDto,
 } from '@/types/quiz'
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -396,5 +400,112 @@ export const quizService = {
     } catch {
       return null
     }
+  },
+
+  /**
+   * GET /api/v1/quiz/exam-configs/:id
+   * Lấy 1 cấu hình đề thi theo ID
+   */
+  getExamConfigById: async (id: number): Promise<ExamConfig> => {
+    const response = await axiosInstance.get<unknown>(`/quiz/exam-configs/${id}`, {
+      [SKIP_AUTH_REDIRECT]: true,
+    } as Record<string, unknown>)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * PATCH /api/v1/quiz/exam-configs/:id/publish
+   * Xuất bản cấu hình đề thi (đồng thời deactivate các cấu hình khác)
+   */
+  publishExamConfig: async (id: number): Promise<ExamConfig> => {
+    const response = await axiosInstance.patch<unknown>(`/quiz/exam-configs/${id}/publish`)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * PATCH /api/v1/quiz/exam-configs/:id/save-draft
+   * Chuyển cấu hình đề thi về trạng thái nháp
+   */
+  saveDraftExamConfig: async (id: number): Promise<ExamConfig> => {
+    const response = await axiosInstance.patch<unknown>(`/quiz/exam-configs/${id}/save-draft`)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * PATCH /api/v1/quiz/exam-configs/:id/deactivate
+   * Ngừng sử dụng cấu hình đề thi
+   */
+  deactivateExamConfig: async (id: number): Promise<ExamConfig> => {
+    const response = await axiosInstance.patch<unknown>(`/quiz/exam-configs/${id}/deactivate`)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * POST /api/v1/quiz/exam-configs/:id/duplicate
+   * Sao chép cấu hình đề thi thành bản nháp mới
+   */
+  duplicateExamConfig: async (id: number): Promise<ExamConfig> => {
+    const response = await axiosInstance.post<unknown>(`/quiz/exam-configs/${id}/duplicate`)
+    const body = response.data as Record<string, unknown>
+    const config = (body?.data as Record<string, unknown>)?.config ?? body?.data
+    return config as ExamConfig
+  },
+
+  /**
+   * GET /api/v1/quiz/exam-configs/:id/preview
+   * Xem trước cấu trúc câu hỏi mà cấu hình này sẽ sinh ra (không tiêu tốn lượt làm bài)
+   */
+  previewExamConfig: async (id: number): Promise<ExamConfigPreview> => {
+    const response = await axiosInstance.get<unknown>(`/quiz/exam-configs/${id}/preview`)
+    const body = response.data as Record<string, unknown>
+    const preview = (body?.data as Record<string, unknown>)?.preview ?? body?.data
+    return preview as ExamConfigPreview
+  },
+
+  // ─── Level (thang điểm / mức phân loại) ─────────────────────────────────────
+
+  /**
+   * GET /api/v1/quiz/levels
+   */
+  getLevels: async (): Promise<Level[]> => {
+    const response = await axiosInstance.get<unknown>('/quiz/levels')
+    const body = response.data as Record<string, unknown>
+    const inner = (body?.data as Record<string, unknown>)?.levels ?? body?.data
+    return Array.isArray(inner) ? (inner as Level[]) : []
+  },
+
+  /**
+   * POST /api/v1/quiz/levels
+   */
+  createLevel: async (dto: CreateLevelDto): Promise<Level> => {
+    const response = await axiosInstance.post<unknown>('/quiz/levels', dto)
+    const body = response.data as Record<string, unknown>
+    const level = (body?.data as Record<string, unknown>)?.level ?? body?.data
+    return level as Level
+  },
+
+  /**
+   * PATCH /api/v1/quiz/levels/:id
+   */
+  updateLevel: async (id: number, dto: UpdateLevelDto): Promise<Level> => {
+    const response = await axiosInstance.patch<unknown>(`/quiz/levels/${id}`, dto)
+    const body = response.data as Record<string, unknown>
+    const level = (body?.data as Record<string, unknown>)?.level ?? body?.data
+    return level as Level
+  },
+
+  /**
+   * DELETE /api/v1/quiz/levels/:id
+   */
+  deleteLevel: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/quiz/levels/${id}`)
   },
 }
