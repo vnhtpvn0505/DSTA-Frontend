@@ -13,6 +13,11 @@ import type {
   UpdatePracticeQuestionDto,
   AssignPracticeDto,
   SubmitPracticeAttemptDto,
+  Skill,
+  CreateSkillDto,
+  UpdateSkillDto,
+  QuestionBankFilters,
+  AuditLogItem,
 } from '@/types/practice'
 
 function unwrap<T>(response: { data: unknown }, key: string): T {
@@ -112,9 +117,110 @@ export const practiceService = {
     return unwrap<PracticeQuestion>(res, 'question')
   },
 
-  /** DELETE /api/v1/practice/exercises/:id/questions/:questionId (soft delete) */
+  /** DELETE /api/v1/practice/exercises/:id/questions/:questionId (detaches from this exercise only) */
   deleteQuestion: async (exerciseId: number, questionId: number): Promise<void> => {
     await axiosInstance.delete(`/practice/exercises/${exerciseId}/questions/${questionId}`)
+  },
+
+  /** POST /api/v1/practice/questions (standalone bank question, not attached yet) */
+  createBankQuestion: async (dto: CreatePracticeQuestionDto): Promise<PracticeQuestion> => {
+    const res = await axiosInstance.post('/practice/questions', dto)
+    return unwrap<PracticeQuestion>(res, 'question')
+  },
+
+  /** PATCH /api/v1/practice/questions/:id */
+  updateBankQuestion: async (
+    id: number,
+    dto: UpdatePracticeQuestionDto,
+  ): Promise<PracticeQuestion> => {
+    const res = await axiosInstance.patch(`/practice/questions/${id}`, dto)
+    return unwrap<PracticeQuestion>(res, 'question')
+  },
+
+  /** DELETE /api/v1/practice/questions/:id (removed from bank entirely) */
+  deleteBankQuestion: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/practice/questions/${id}`)
+  },
+
+  /** POST /api/v1/practice/exercises/:id/questions/attach */
+  attachQuestion: async (
+    exerciseId: number,
+    questionId: number,
+    order?: number,
+  ): Promise<void> => {
+    await axiosInstance.post(`/practice/exercises/${exerciseId}/questions/attach`, {
+      questionId,
+      order,
+    })
+  },
+
+  /** GET /api/v1/practice/questions/bank */
+  searchQuestionBank: async (filters: QuestionBankFilters = {}): Promise<PracticeQuestion[]> => {
+    const res = await axiosInstance.get('/practice/questions/bank', { params: filters })
+    const list = unwrap<PracticeQuestion[]>(res, 'questions')
+    return Array.isArray(list) ? list : []
+  },
+
+  /** GET /api/v1/audit-logs?entityType=practice_exercise&entityId=:id */
+  getAuditLogs: async (exerciseId: number): Promise<AuditLogItem[]> => {
+    const res = await axiosInstance.get('/audit-logs', {
+      params: { entityType: 'practice_exercise', entityId: exerciseId },
+    })
+    const list = unwrap<AuditLogItem[]>(res, 'logs')
+    return Array.isArray(list) ? list : []
+  },
+
+  // ─── Skill (kỹ năng) ────────────────────────────────────────────────────
+
+  /** GET /api/v1/practice/skills */
+  getSkills: async (): Promise<Skill[]> => {
+    const res = await axiosInstance.get('/practice/skills')
+    const list = unwrap<Skill[]>(res, 'skills')
+    return Array.isArray(list) ? list : []
+  },
+
+  /** POST /api/v1/practice/skills */
+  createSkill: async (dto: CreateSkillDto): Promise<Skill> => {
+    const res = await axiosInstance.post('/practice/skills', dto)
+    return unwrap<Skill>(res, 'skill')
+  },
+
+  /** PATCH /api/v1/practice/skills/:id */
+  updateSkill: async (id: number, dto: UpdateSkillDto): Promise<Skill> => {
+    const res = await axiosInstance.patch(`/practice/skills/${id}`, dto)
+    return unwrap<Skill>(res, 'skill')
+  },
+
+  /** DELETE /api/v1/practice/skills/:id */
+  deleteSkill: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/practice/skills/${id}`)
+  },
+
+  // ─── Review workflow: Teacher submits, Reviewer approves/rejects ───────
+
+  /** PATCH /api/v1/practice/exercises/:id/submit-review */
+  submitForReview: async (id: number): Promise<PracticeExercise> => {
+    const res = await axiosInstance.patch(`/practice/exercises/${id}/submit-review`)
+    return unwrap<PracticeExercise>(res, 'exercise')
+  },
+
+  /** GET /api/v1/practice/exercises/pending-review */
+  getPendingReviewExercises: async (): Promise<PracticeExercise[]> => {
+    const res = await axiosInstance.get('/practice/exercises/pending-review')
+    const list = unwrap<PracticeExercise[]>(res, 'exercises')
+    return Array.isArray(list) ? list : []
+  },
+
+  /** PATCH /api/v1/practice/exercises/:id/approve */
+  approveExercise: async (id: number): Promise<PracticeExercise> => {
+    const res = await axiosInstance.patch(`/practice/exercises/${id}/approve`)
+    return unwrap<PracticeExercise>(res, 'exercise')
+  },
+
+  /** PATCH /api/v1/practice/exercises/:id/reject */
+  rejectExercise: async (id: number, reason: string): Promise<PracticeExercise> => {
+    const res = await axiosInstance.patch(`/practice/exercises/${id}/reject`, { reason })
+    return unwrap<PracticeExercise>(res, 'exercise')
   },
 
   // ─── Admin: assignment & reporting ──────────────────────────────────────

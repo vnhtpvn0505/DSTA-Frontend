@@ -4,8 +4,9 @@ import { useEffect } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
+import { quizService } from '@/features/quiz/quiz.service'
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,14 @@ const formSchema = z
     explanationCorrect: z.string().optional(),
     explanationIncorrect: z.string().optional(),
     sampleAnswer: z.string().optional(),
+    categoryId: z.preprocess(
+      (v) => (v === '' || v === undefined ? undefined : Number(v)),
+      z.number().optional(),
+    ),
+    skillId: z.preprocess(
+      (v) => (v === '' || v === undefined ? undefined : Number(v)),
+      z.number().optional(),
+    ),
     options: z.array(
       z.object({ optionText: z.string(), isCorrect: z.boolean() }),
     ),
@@ -78,13 +87,16 @@ const DEFAULT_VALUES: FormValues = {
   explanationCorrect: '',
   explanationIncorrect: '',
   sampleAnswer: '',
+  categoryId: undefined,
+  skillId: undefined,
   options: DEFAULT_OPTIONS,
 }
 
 interface PracticeQuestionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  exerciseId: number
+  /** Omit to manage a standalone bank question not attached to any exercise. */
+  exerciseId?: number
   question?: PracticeQuestion | null
   onSuccess?: () => void
 }
@@ -98,6 +110,17 @@ export default function PracticeQuestionDialog({
 }: PracticeQuestionDialogProps) {
   const isEdit = question != null
   const queryClient = useQueryClient()
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['quiz-categories'],
+    queryFn: quizService.getCategories,
+    enabled: open,
+  })
+  const { data: skills = [] } = useQuery({
+    queryKey: ['practice-skills'],
+    queryFn: practiceService.getSkills,
+    enabled: open,
+  })
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as Resolver<FormValues>,
@@ -117,6 +140,8 @@ export default function PracticeQuestionDialog({
         explanationCorrect: question.explanationCorrect ?? '',
         explanationIncorrect: question.explanationIncorrect ?? '',
         sampleAnswer: question.sampleAnswer ?? '',
+        categoryId: question.categoryId ?? undefined,
+        skillId: question.skillId ?? undefined,
         options:
           question.options && question.options.length > 0
             ? question.options.map((o) => ({
@@ -145,6 +170,8 @@ export default function PracticeQuestionDialog({
         explanationCorrect: values.type === 'mc' ? values.explanationCorrect || undefined : undefined,
         explanationIncorrect: values.type === 'mc' ? values.explanationIncorrect || undefined : undefined,
         sampleAnswer: values.type === 'sa' ? values.sampleAnswer || undefined : undefined,
+        categoryId: values.categoryId,
+        skillId: values.skillId,
         options:
           values.type === 'mc'
             ? values.options
@@ -152,12 +179,20 @@ export default function PracticeQuestionDialog({
                 .map((o) => ({ optionText: o.optionText.trim(), isCorrect: o.isCorrect }))
             : undefined,
       }
+      if (exerciseId != null) {
+        return isEdit
+          ? practiceService.updateQuestion(exerciseId, question!.id, dto)
+          : practiceService.createQuestion(exerciseId, dto)
+      }
       return isEdit
-        ? practiceService.updateQuestion(exerciseId, question!.id, dto)
-        : practiceService.createQuestion(exerciseId, dto)
+        ? practiceService.updateBankQuestion(question!.id, dto)
+        : practiceService.createBankQuestion(dto)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['practice-questions', exerciseId] })
+      if (exerciseId != null) {
+        queryClient.invalidateQueries({ queryKey: ['practice-questions', exerciseId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ['practice-question-bank'] })
       onOpenChange(false)
       onSuccess?.()
     },
@@ -252,6 +287,59 @@ export default function PracticeQuestionDialog({
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Miền năng lực</FormLabel>
+                    <FormControl>
+                      <select
+                        value={field.value == null ? '' : String(field.value)}
+                        onChange={(e) =>
+                          field.onChange(e.target.value === '' ? undefined : Number(e.target.value))
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-[#00284D] focus:outline-none focus:ring-1 focus:ring-[#00284D]"
+                      >
+                        <option value="">Không gắn</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="skillId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kỹ năng</FormLabel>
+                    <FormControl>
+                      <select
+                        value={field.value == null ? '' : String(field.value)}
+                        onChange={(e) =>
+                          field.onChange(e.target.value === '' ? undefined : Number(e.target.value))
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-[#00284D] focus:outline-none focus:ring-1 focus:ring-[#00284D]"
+                      >
+                        <option value="">Không gắn</option>
+                        {skills.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {type === 'mc' ? (
               <div>

@@ -1,5 +1,8 @@
 export type UserRole = 'student' | 'admin'
 
+/** Sub-classification of an Admin-role account. Null/undefined = plain admin. */
+export type AdminType = 'admin' | 'teacher' | 'reviewer'
+
 export interface UserProfile {
   id: number
   username: string
@@ -14,6 +17,7 @@ export interface UserProfile {
   facultyName: string
   phoneNumber: string
   role?: UserRole
+  adminType?: AdminType | null
 }
 
 export interface User {
@@ -27,4 +31,6 @@ export interface User {
   universityName?: string
   facultyName?: string
   studentId?: string
+  /** Teacher = soạn bài luyện tập; Reviewer = thẩm định. Only set when role is admin. */
+  adminType?: AdminType | null
 }

@@ -13,12 +13,18 @@ import { cn } from '@/lib/utils'
 
 const STATUS_LABELS: Record<PracticeExerciseStatus, string> = {
   draft: 'Nháp',
+  pending_review: 'Chờ thẩm định',
+  rejected: 'Bị từ chối',
+  approved: 'Đã phê duyệt',
   published: 'Đã xuất bản',
   inactive: 'Ngừng sử dụng',
 }
 
 const STATUS_STYLES: Record<PracticeExerciseStatus, string> = {
   draft: 'bg-gray-100 text-gray-600',
+  pending_review: 'bg-amber-100 text-amber-700',
+  rejected: 'bg-red-100 text-red-600',
+  approved: 'bg-blue-100 text-blue-700',
   published: 'bg-green-100 text-green-700',
   inactive: 'bg-red-100 text-red-600',
 }
@@ -39,6 +45,10 @@ function PracticesListContent() {
 
   const publishMutation = useMutation({
     mutationFn: (id: number) => practiceService.publishExercise(id),
+    onSuccess: invalidate,
+  })
+  const submitReviewMutation = useMutation({
+    mutationFn: (id: number) => practiceService.submitForReview(id),
     onSuccess: invalidate,
   })
   const saveDraftMutation = useMutation({
@@ -164,7 +174,18 @@ function PracticesListContent() {
                         >
                           <Copy className="h-4 w-4" />
                         </button>
-                        {ex.status !== 'published' && (
+                        {(ex.status === 'draft' || ex.status === 'rejected') && (
+                          <button
+                            type="button"
+                            onClick={() => submitReviewMutation.mutate(ex.id)}
+                            className="inline-flex items-center justify-center rounded-lg p-2 text-purple-600 hover:bg-purple-50 cursor-pointer"
+                            aria-label="Gửi thẩm định"
+                            title="Gửi thẩm định"
+                          >
+                            <Send className="h-4 w-4" />
+                          </button>
+                        )}
+                        {ex.status === 'approved' && (
                           <button
                             type="button"
                             onClick={() => publishMutation.mutate(ex.id)}

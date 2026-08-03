@@ -16,6 +16,8 @@ import {
   BookOpen,
   CalendarDays,
   NotebookPen,
+  Library,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +30,8 @@ const navItems = [
   { href: '/student', label: 'Quản lý sinh viên', icon: Users },
   { href: '/exams', label: 'Quản lý bài thi', icon: FileQuestion },
   { href: '/practices', label: 'Quản lý luyện tập', icon: NotebookPen },
+  { href: '/question-bank', label: 'Ngân hàng câu hỏi', icon: Library },
+  { href: '/practice-review', label: 'Thẩm định luyện tập', icon: ClipboardList },
   { href: '/grading', label: 'Chấm điểm tự luận', icon: ClipboardCheck },
   { href: '/reports', label: 'Báo cáo', icon: FileBarChart },
   { href: '/teachers', label: 'Quản lý giảng viên', icon: GraduationCap },

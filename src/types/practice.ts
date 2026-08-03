@@ -3,7 +3,13 @@
  * Mirrors backend entities/DTOs in DSTA-Backend/src/modules/practice.
  */
 
-export type PracticeExerciseStatus = 'draft' | 'published' | 'inactive'
+export type PracticeExerciseStatus =
+  | 'draft'
+  | 'pending_review'
+  | 'rejected'
+  | 'approved'
+  | 'published'
+  | 'inactive'
 export type PracticeQuestionType = 'mc' | 'sa'
 export type RevealMode = 'after_submit' | 'after_each_question' | 'never'
 export type PracticeAttemptStatus = 'in_progress' | 'completed'
@@ -31,6 +37,11 @@ export interface PracticeExercise {
   createdAt?: string
   updatedAt?: string
   questions?: PracticeQuestion[]
+  createdBy?: number | null
+  submittedForReviewAt?: string | null
+  reviewedBy?: number | null
+  reviewedAt?: string | null
+  rejectionReason?: string | null
 }
 
 export interface PracticeOption {
@@ -43,7 +54,6 @@ export interface PracticeOption {
 
 export interface PracticeQuestion {
   id: number
-  exerciseId?: number
   type: PracticeQuestionType
   content: string
   hint?: string | null
@@ -53,7 +63,34 @@ export interface PracticeQuestion {
   solution?: string | null
   knowledgeToReview?: string | null
   sampleAnswer?: string | null
+  categoryId?: number | null
+  skillId?: number | null
+  difficultyId?: number | null
+  createdBy?: number | null
   options?: PracticeOption[]
+}
+
+export interface Skill {
+  id: number
+  name: string
+  description?: string | null
+  categoryId?: number | null
+}
+
+export interface CreateSkillDto {
+  name: string
+  description?: string
+  categoryId?: number
+}
+
+export type UpdateSkillDto = Partial<CreateSkillDto>
+
+export interface QuestionBankFilters {
+  search?: string
+  createdBy?: number
+  categoryId?: number
+  skillId?: number
+  difficultyId?: number
 }
 
 export interface PracticeAssignment {
@@ -109,6 +146,16 @@ export interface PracticeHistoryItem {
   finishedAt: string | null
 }
 
+export interface AuditLogItem {
+  id: number
+  actorId: number | null
+  action: string
+  entityType: string
+  entityId: number
+  metadata?: Record<string, unknown> | null
+  createdAt: string
+}
+
 export interface ErrorReportItem {
   questionId: number
   content: string
@@ -144,6 +191,9 @@ export interface CreatePracticeQuestionDto {
   solution?: string
   knowledgeToReview?: string
   sampleAnswer?: string
+  categoryId?: number
+  skillId?: number
+  difficultyId?: number
   options?: CreatePracticeOptionDto[]
 }
 

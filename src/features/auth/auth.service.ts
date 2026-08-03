@@ -41,6 +41,7 @@ export function profileToUser(p: UserProfile): User {
     universityName: p.universityName,
     facultyName: p.facultyName,
     studentId: p.username,
+    adminType: p.adminType ?? null,
   }
 }
 

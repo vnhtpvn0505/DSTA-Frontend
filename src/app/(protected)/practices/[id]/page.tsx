@@ -3,20 +3,50 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
+import { ArrowLeft, History, Library, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
 import RoleGuard from '@/components/common/RoleGuard'
 import PracticeQuestionDialog from '@/components/practice/PracticeQuestionDialog'
+import AttachQuestionDialog from '@/components/practice/AttachQuestionDialog'
 import AssignExerciseDialog from '@/components/practice/AssignExerciseDialog'
 import { practiceService } from '@/features/practice/practice.service'
 import type { PracticeQuestion } from '@/types/practice'
 
-type DetailTab = 'questions' | 'assign' | 'error-report'
+type DetailTab = 'questions' | 'assign' | 'error-report' | 'audit-log'
 
 const TABS: { id: DetailTab; label: string }[] = [
   { id: 'questions', label: 'Câu hỏi' },
   { id: 'assign', label: 'Phân công' },
   { id: 'error-report', label: 'Báo cáo lỗi sai' },
+  { id: 'audit-log', label: 'Lịch sử thao tác' },
 ]
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  'practice_exercise.create': 'Tạo bài luyện tập',
+  'practice_exercise.update': 'Cập nhật thông tin',
+  'practice_exercise.delete': 'Xóa bài luyện tập',
+  'practice_exercise.duplicate': 'Sao chép bài luyện tập',
+  'practice_exercise.publish': 'Xuất bản',
+  'practice_exercise.save_draft': 'Chuyển về nháp',
+  'practice_exercise.deactivate': 'Ngừng sử dụng',
+  'practice_exercise.submit_review': 'Gửi thẩm định',
+  'practice_exercise.approve': 'Phê duyệt',
+  'practice_exercise.reject': 'Từ chối',
+  'practice_exercise.add_question': 'Thêm câu hỏi',
+}
+
+function formatAuditDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
 
 function PracticeDetailContent() {
   const params = useParams()
@@ -26,6 +56,7 @@ function PracticeDetailContent() {
 
   const [activeTab, setActiveTab] = useState<DetailTab>('questions')
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false)
+  const [attachDialogOpen, setAttachDialogOpen] = useState(false)
   const [editQuestion, setEditQuestion] = useState<PracticeQuestion | null>(null)
   const [deleteQuestion, setDeleteQuestion] = useState<PracticeQuestion | null>(null)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
@@ -49,6 +80,12 @@ function PracticeDetailContent() {
     enabled: Number.isFinite(exerciseId) && activeTab === 'error-report',
   })
 
+  const { data: auditLogs = [], isLoading: auditLoading } = useQuery({
+    queryKey: ['practice-audit-log', exerciseId],
+    queryFn: () => practiceService.getAuditLogs(exerciseId),
+    enabled: Number.isFinite(exerciseId) && activeTab === 'audit-log',
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (questionId: number) => practiceService.deleteQuestion(exerciseId, questionId),
     onSuccess: () => {
@@ -70,9 +107,16 @@ function PracticeDetailContent() {
         Quay lại danh sách
       </button>
 
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">
+      <h1 className="mb-2 text-2xl font-bold text-gray-900">
         {exercise?.title ?? 'Bài luyện tập'}
       </h1>
+
+      {exercise?.status === 'rejected' && exercise.rejectionReason && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-semibold">Bài bị từ chối thẩm định</p>
+          <p className="mt-1">{exercise.rejectionReason}</p>
+        </div>
+      )}
 
       <div className="mb-6 border-b border-gray-200">
         <nav className="flex gap-8">
@@ -95,7 +139,15 @@ function PracticeDetailContent() {
 
       {activeTab === 'questions' && (
         <div>
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setAttachDialogOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00284D] px-4 py-2.5 text-sm font-semibold text-[#00284D] hover:bg-blue-50 cursor-pointer"
+            >
+              <Library className="h-5 w-5" />
+              Gắn từ ngân hàng
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -185,6 +237,12 @@ function PracticeDetailContent() {
             onOpenChange={setQuestionDialogOpen}
             exerciseId={exerciseId}
             question={editQuestion}
+          />
+
+          <AttachQuestionDialog
+            open={attachDialogOpen}
+            onOpenChange={setAttachDialogOpen}
+            exerciseId={exerciseId}
           />
 
           {deleteQuestion && (
@@ -295,6 +353,39 @@ function PracticeDetailContent() {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'audit-log' && (
+        <div className="overflow-hidden rounded-2xl bg-white shadow-md">
+          {auditLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#00284D] border-t-transparent" />
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <p className="p-8 text-center text-sm text-gray-500">Chưa có thao tác nào được ghi nhận.</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {auditLogs.map((log) => (
+                <div key={log.id} className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <History className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {AUDIT_ACTION_LABELS[log.action] ?? log.action}
+                      </p>
+                      {log.metadata && 'reason' in log.metadata && (
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          Lý do: {String(log.metadata.reason)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400">{formatAuditDate(log.createdAt)}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
