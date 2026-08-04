@@ -205,25 +205,25 @@ export default function ExamPeriodsPage() {
             className="space-y-4 py-2"
           >
             <div>
-              <Label>Tên kỳ thi</Label>
-              <Input {...createForm.register('name')} className="mt-1" />
+              <Label htmlFor="create-period-name">Tên kỳ thi</Label>
+              <Input id="create-period-name" {...createForm.register('name')} className="mt-1" />
               {createForm.formState.errors.name && (
                 <p className="mt-1 text-xs text-red-500">{createForm.formState.errors.name.message}</p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Ngày bắt đầu</Label>
-                <Input type="datetime-local" {...createForm.register('startDate')} className="mt-1" />
+                <Label htmlFor="create-period-startDate">Ngày bắt đầu</Label>
+                <Input id="create-period-startDate" type="datetime-local" {...createForm.register('startDate')} className="mt-1" />
               </div>
               <div>
-                <Label>Ngày kết thúc</Label>
-                <Input type="datetime-local" {...createForm.register('endDate')} className="mt-1" />
+                <Label htmlFor="create-period-endDate">Ngày kết thúc</Label>
+                <Input id="create-period-endDate" type="datetime-local" {...createForm.register('endDate')} className="mt-1" />
               </div>
             </div>
             <div>
-              <Label>ID cấu hình đề (tuỳ chọn)</Label>
-              <Input type="number" {...createForm.register('examConfigId', { valueAsNumber: true })} className="mt-1" />
+              <Label htmlFor="create-period-examConfigId">ID cấu hình đề (tuỳ chọn)</Label>
+              <Input id="create-period-examConfigId" type="number" {...createForm.register('examConfigId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })} className="mt-1" />
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Hủy</Button>
@@ -254,26 +254,26 @@ export default function ExamPeriodsPage() {
             className="space-y-4 py-2"
           >
             <div>
-              <Label>Tên kỳ thi</Label>
-              <Input {...editForm.register('name')} className="mt-1" />
+              <Label htmlFor="edit-period-name">Tên kỳ thi</Label>
+              <Input id="edit-period-name" {...editForm.register('name')} className="mt-1" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Ngày bắt đầu</Label>
-                <Input type="datetime-local" {...editForm.register('startDate')} className="mt-1" />
+                <Label htmlFor="edit-period-startDate">Ngày bắt đầu</Label>
+                <Input id="edit-period-startDate" type="datetime-local" {...editForm.register('startDate')} className="mt-1" />
               </div>
               <div>
-                <Label>Ngày kết thúc</Label>
-                <Input type="datetime-local" {...editForm.register('endDate')} className="mt-1" />
+                <Label htmlFor="edit-period-endDate">Ngày kết thúc</Label>
+                <Input id="edit-period-endDate" type="datetime-local" {...editForm.register('endDate')} className="mt-1" />
               </div>
             </div>
             <div>
-              <Label>ID cấu hình đề</Label>
-              <Input type="number" {...editForm.register('examConfigId', { valueAsNumber: true })} className="mt-1" />
+              <Label htmlFor="edit-period-examConfigId">ID cấu hình đề</Label>
+              <Input id="edit-period-examConfigId" type="number" {...editForm.register('examConfigId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })} className="mt-1" />
             </div>
             <div>
-              <Label>Trạng thái</Label>
-              <select {...editForm.register('status')} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <Label htmlFor="edit-period-status">Trạng thái</Label>
+              <select id="edit-period-status" {...editForm.register('status')} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                 <option value="scheduled">Chờ bắt đầu</option>
                 <option value="active">Đang diễn ra</option>
                 <option value="ended">Đã kết thúc</option>

@@ -69,8 +69,9 @@ function CustomPracticeContent() {
           )}
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Miền năng lực</label>
+            <label htmlFor="custom-category" className="mb-1.5 block text-sm font-medium text-gray-700">Miền năng lực</label>
             <select
+              id="custom-category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-main focus:outline-none focus:ring-1 focus:ring-main"
@@ -85,8 +86,9 @@ function CustomPracticeContent() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Kỹ năng</label>
+            <label htmlFor="custom-skill" className="mb-1.5 block text-sm font-medium text-gray-700">Kỹ năng</label>
             <select
+              id="custom-skill"
               value={skillId}
               onChange={(e) => setSkillId(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-main focus:outline-none focus:ring-1 focus:ring-main"
@@ -124,8 +126,9 @@ function CustomPracticeContent() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Số lượng câu</label>
+              <label htmlFor="custom-quantity" className="mb-1.5 block text-sm font-medium text-gray-700">Số lượng câu</label>
               <input
+                id="custom-quantity"
                 type="number"
                 min={1}
                 value={quantity}
@@ -134,8 +137,9 @@ function CustomPracticeContent() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Điểm đạt (%)</label>
+              <label htmlFor="custom-passing-score" className="mb-1.5 block text-sm font-medium text-gray-700">Điểm đạt (%)</label>
               <input
+                id="custom-passing-score"
                 type="number"
                 min={0}
                 max={100}

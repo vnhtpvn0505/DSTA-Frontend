@@ -67,22 +67,28 @@ export default function CohortsPage() {
     editForm.reset({ name: c.name, year: c.year ?? '', description: c.description ?? '' })
   }
 
-  const FormFields = ({ form }: { form: ReturnType<typeof useForm<FormValues>> }) => (
+  const FormFields = ({
+    form,
+    idPrefix,
+  }: {
+    form: ReturnType<typeof useForm<FormValues>>
+    idPrefix: string
+  }) => (
     <>
       <div>
-        <Label>Tên khoá</Label>
-        <Input {...form.register('name')} className="mt-1" />
+        <Label htmlFor={`${idPrefix}-name`}>Tên khoá</Label>
+        <Input id={`${idPrefix}-name`} {...form.register('name')} className="mt-1" />
         {form.formState.errors.name && (
           <p className="mt-1 text-xs text-red-500">{form.formState.errors.name.message}</p>
         )}
       </div>
       <div>
-        <Label>Năm</Label>
-        <Input {...form.register('year')} className="mt-1" />
+        <Label htmlFor={`${idPrefix}-year`}>Năm</Label>
+        <Input id={`${idPrefix}-year`} {...form.register('year')} className="mt-1" />
       </div>
       <div>
-        <Label>Mô tả</Label>
-        <textarea {...form.register('description')} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} />
+        <Label htmlFor={`${idPrefix}-description`}>Mô tả</Label>
+        <textarea id={`${idPrefix}-description`} {...form.register('description')} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} />
       </div>
     </>
   )
@@ -160,7 +166,7 @@ export default function CohortsPage() {
             )}
             className="space-y-4 py-2"
           >
-            <FormFields form={createForm} />
+            <FormFields form={createForm} idPrefix="create" />
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Hủy</Button>
               <Button type="submit" disabled={createMutation.isPending}>
@@ -181,7 +187,7 @@ export default function CohortsPage() {
             })}
             className="space-y-4 py-2"
           >
-            <FormFields form={editForm} />
+            <FormFields form={editForm} idPrefix="edit" />
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>Hủy</Button>
               <Button type="submit" disabled={updateMutation.isPending}>
