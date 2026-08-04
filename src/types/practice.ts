@@ -111,12 +111,21 @@ export interface SafePracticeQuestion {
 
 export interface PracticeAttempt {
   id: number
-  exerciseId: number
+  exerciseId: number | null
   attemptNumber: number
   questions: SafePracticeQuestion[]
   answerIds: Record<number, number>
   status: PracticeAttemptStatus
   startedAt?: string
+}
+
+export interface GeneratePracticeAttemptDto {
+  categoryId?: number
+  skillId?: number
+  difficultyIds?: number[]
+  questionTypes?: PracticeQuestionType[]
+  quantity: number
+  passingScore?: number
 }
 
 export interface PracticeAttemptFeedback {
@@ -127,17 +136,32 @@ export interface PracticeAttemptFeedback {
   solution?: string | null
 }
 
+export interface ReportBreakdownGroup {
+  id: number
+  total: number
+  correct: number
+}
+
 export interface SubmitPracticeAttemptResult {
   id: number
   score: number
   passingScore: number
   isPassed: boolean
   feedback: PracticeAttemptFeedback[]
+  breakdown: {
+    byCategory: ReportBreakdownGroup[]
+    bySkill: ReportBreakdownGroup[]
+  }
+}
+
+export interface ReportSummary {
+  byCategory: ReportBreakdownGroup[]
+  bySkill: ReportBreakdownGroup[]
 }
 
 export interface PracticeHistoryItem {
   id: number
-  exerciseId: number
+  exerciseId: number | null
   exerciseTitle: string
   attemptNumber: number
   score: number | null

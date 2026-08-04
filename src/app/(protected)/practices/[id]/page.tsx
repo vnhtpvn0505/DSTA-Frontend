@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, History, Library, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
+import { ArrowLeft, Download, History, Library, Pencil, Plus, Trash2, UserPlus } from 'lucide-react'
 import RoleGuard from '@/components/common/RoleGuard'
 import PracticeQuestionDialog from '@/components/practice/PracticeQuestionDialog'
 import AttachQuestionDialog from '@/components/practice/AttachQuestionDialog'
 import AssignExerciseDialog from '@/components/practice/AssignExerciseDialog'
 import { practiceService } from '@/features/practice/practice.service'
+import { quizService } from '@/features/quiz/quiz.service'
 import type { PracticeQuestion } from '@/types/practice'
 
 type DetailTab = 'questions' | 'assign' | 'error-report' | 'audit-log'
@@ -61,6 +62,8 @@ function PracticeDetailContent() {
   const [deleteQuestion, setDeleteQuestion] = useState<PracticeQuestion | null>(null)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [assignSuccessMsg, setAssignSuccessMsg] = useState('')
+  const [reportCategoryId, setReportCategoryId] = useState<number | ''>('')
+  const [reportSkillId, setReportSkillId] = useState<number | ''>('')
 
   const { data: exercise } = useQuery({
     queryKey: ['practice-exercise', exerciseId],
@@ -75,10 +78,44 @@ function PracticeDetailContent() {
   })
 
   const { data: errorReport = [], isLoading: reportLoading } = useQuery({
-    queryKey: ['practice-error-report', exerciseId],
-    queryFn: () => practiceService.getErrorReport(exerciseId),
+    queryKey: ['practice-error-report', exerciseId, reportCategoryId, reportSkillId],
+    queryFn: () =>
+      practiceService.getErrorReport(exerciseId, {
+        categoryId: reportCategoryId === '' ? undefined : reportCategoryId,
+        skillId: reportSkillId === '' ? undefined : reportSkillId,
+      }),
     enabled: Number.isFinite(exerciseId) && activeTab === 'error-report',
   })
+
+  const { data: reportSummary } = useQuery({
+    queryKey: ['practice-report-summary', exerciseId],
+    queryFn: () => practiceService.getReportSummary(exerciseId),
+    enabled: Number.isFinite(exerciseId) && activeTab === 'error-report',
+  })
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['quiz-categories'],
+    queryFn: quizService.getCategories,
+    enabled: activeTab === 'error-report',
+  })
+  const { data: skills = [] } = useQuery({
+    queryKey: ['practice-skills'],
+    queryFn: practiceService.getSkills,
+    enabled: activeTab === 'error-report',
+  })
+  const categoryName = (id: number) => categories.find((c) => c.id === id)?.name ?? `#${id}`
+  const skillName = (id: number) => skills.find((s) => s.id === id)?.name ?? `#${id}`
+
+  const handleExportCsv = async () => {
+    const csv = await practiceService.exportErrorReportCsv(exerciseId)
+    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bao-cao-loi-sai-${exerciseId}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const { data: auditLogs = [], isLoading: auditLoading } = useQuery({
     queryKey: ['practice-audit-log', exerciseId],
@@ -305,6 +342,79 @@ function PracticeDetailContent() {
       )}
 
       {activeTab === 'error-report' && (
+        <div>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <select
+              value={reportCategoryId}
+              onChange={(e) =>
+                setReportCategoryId(e.target.value === '' ? '' : Number(e.target.value))
+              }
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-[#00284D] focus:outline-none focus:ring-1 focus:ring-[#00284D]"
+            >
+              <option value="">Tất cả miền năng lực</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={reportSkillId}
+              onChange={(e) => setReportSkillId(e.target.value === '' ? '' : Number(e.target.value))}
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-[#00284D] focus:outline-none focus:ring-1 focus:ring-[#00284D]"
+            >
+              <option value="">Tất cả kỹ năng</option>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="ml-auto inline-flex items-center gap-2 rounded-xl border border-[#00284D] px-4 py-2 text-sm font-semibold text-[#00284D] hover:bg-blue-50 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              Xuất CSV
+            </button>
+          </div>
+
+          {reportSummary && (reportSummary.byCategory.length > 0 || reportSummary.bySkill.length > 0) && (
+            <div className="mb-4 grid gap-4 sm:grid-cols-2">
+              {reportSummary.byCategory.length > 0 && (
+                <div className="rounded-2xl bg-white p-4 shadow-md">
+                  <p className="mb-2 text-sm font-semibold text-gray-900">Kết quả theo miền năng lực</p>
+                  <div className="space-y-1.5">
+                    {reportSummary.byCategory.map((g) => (
+                      <div key={g.id} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{categoryName(g.id)}</span>
+                        <span className="font-medium text-gray-900">
+                          {g.correct}/{g.total} đúng ({Math.round((g.correct / g.total) * 100)}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {reportSummary.bySkill.length > 0 && (
+                <div className="rounded-2xl bg-white p-4 shadow-md">
+                  <p className="mb-2 text-sm font-semibold text-gray-900">Kết quả theo kỹ năng</p>
+                  <div className="space-y-1.5">
+                    {reportSummary.bySkill.map((g) => (
+                      <div key={g.id} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">{skillName(g.id)}</span>
+                        <span className="font-medium text-gray-900">
+                          {g.correct}/{g.total} đúng ({Math.round((g.correct / g.total) * 100)}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         <div className="overflow-hidden rounded-2xl bg-white shadow-md">
           {reportLoading ? (
             <div className="flex items-center justify-center py-16">
@@ -354,6 +464,7 @@ function PracticeDetailContent() {
               </tbody>
             </table>
           )}
+          </div>
         </div>
       )}
 

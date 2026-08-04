@@ -18,6 +18,8 @@ import type {
   UpdateSkillDto,
   QuestionBankFilters,
   AuditLogItem,
+  GeneratePracticeAttemptDto,
+  ReportSummary,
 } from '@/types/practice'
 
 function unwrap<T>(response: { data: unknown }, key: string): T {
@@ -236,10 +238,27 @@ export const practiceService = {
   },
 
   /** GET /api/v1/practice/exercises/:id/error-report */
-  getErrorReport: async (exerciseId: number): Promise<ErrorReportItem[]> => {
-    const res = await axiosInstance.get(`/practice/exercises/${exerciseId}/error-report`)
+  getErrorReport: async (
+    exerciseId: number,
+    filters: { categoryId?: number; skillId?: number; difficultyId?: number } = {},
+  ): Promise<ErrorReportItem[]> => {
+    const res = await axiosInstance.get(`/practice/exercises/${exerciseId}/error-report`, {
+      params: filters,
+    })
     const list = unwrap<ErrorReportItem[]>(res, 'report')
     return Array.isArray(list) ? list : []
+  },
+
+  /** GET /api/v1/practice/exercises/:id/report-summary */
+  getReportSummary: async (exerciseId: number): Promise<ReportSummary> => {
+    const res = await axiosInstance.get(`/practice/exercises/${exerciseId}/report-summary`)
+    return unwrap<ReportSummary>(res, 'summary')
+  },
+
+  /** GET /api/v1/practice/exercises/:id/error-report/export — returns raw CSV text */
+  exportErrorReportCsv: async (exerciseId: number): Promise<string> => {
+    const res = await axiosInstance.get(`/practice/exercises/${exerciseId}/error-report/export`)
+    return unwrap<string>(res, 'csv')
   },
 
   // ─── Student: assigned exercises & attempts ─────────────────────────────
@@ -255,6 +274,24 @@ export const practiceService = {
   startAttempt: async (exerciseId: number): Promise<PracticeAttempt> => {
     const res = await axiosInstance.post(`/practice/exercises/${exerciseId}/start`)
     return unwrap<PracticeAttempt>(res, 'attempt')
+  },
+
+  /** POST /api/v1/practice/generate (custom attempt from self-picked criteria) */
+  generateCustomAttempt: async (dto: GeneratePracticeAttemptDto): Promise<PracticeAttempt> => {
+    const res = await axiosInstance.post('/practice/generate', dto)
+    return unwrap<PracticeAttempt>(res, 'attempt')
+  },
+
+  /** GET /api/v1/practice/attempts/:id */
+  getAttemptById: async (attemptId: number): Promise<PracticeAttempt> => {
+    const res = await axiosInstance.get(`/practice/attempts/${attemptId}`)
+    return unwrap<PracticeAttempt>(res, 'attempt')
+  },
+
+  /** GET /api/v1/practice/attempts/:id/result (re-view a completed attempt, no re-grading) */
+  getAttemptResult: async (attemptId: number): Promise<SubmitPracticeAttemptResult> => {
+    const res = await axiosInstance.get(`/practice/attempts/${attemptId}/result`)
+    return unwrap<SubmitPracticeAttemptResult>(res, 'result')
   },
 
   /** PATCH /api/v1/practice/attempts/:id/progress */

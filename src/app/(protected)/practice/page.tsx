@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Play, History as HistoryIcon, ListChecks } from 'lucide-react'
+import { Eye, Play, RotateCcw, History as HistoryIcon, ListChecks, Sparkles } from 'lucide-react'
 import RoleGuard from '@/components/common/RoleGuard'
+import PracticeResultDialog from '@/components/practice/PracticeResultDialog'
 import { practiceService } from '@/features/practice/practice.service'
+import type { SubmitPracticeAttemptResult, PracticeHistoryItem } from '@/types/practice'
 
 type Tab = 'assigned' | 'history'
 
@@ -44,6 +46,8 @@ function PracticeListContent() {
     enabled: tab === 'history',
   })
 
+  const [viewResult, setViewResult] = useState<SubmitPracticeAttemptResult | null>(null)
+
   const startMutation = useMutation({
     mutationFn: (exerciseId: number) => practiceService.startAttempt(exerciseId),
     onSuccess: (attempt) => {
@@ -51,14 +55,45 @@ function PracticeListContent() {
     },
   })
 
+  const viewResultMutation = useMutation({
+    mutationFn: (attemptId: number) => practiceService.getAttemptResult(attemptId),
+    onSuccess: setViewResult,
+  })
+
+  const retryMutation = useMutation({
+    mutationFn: (h: PracticeHistoryItem) =>
+      h.exerciseId != null
+        ? practiceService.startAttempt(h.exerciseId)
+        : Promise.reject(new Error('custom')),
+    onSuccess: (attempt) => router.push(`/practice/${attempt.exerciseId}/take`),
+  })
+
+  const handleRetry = (h: PracticeHistoryItem) => {
+    if (h.exerciseId == null) {
+      router.push('/practice/custom')
+      return
+    }
+    retryMutation.mutate(h)
+  }
+
   return (
     <main className="min-h-screen bg-[#E8F4FF]">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-main sm:text-3xl">Luyện tập</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Danh sách bài luyện tập được giao và lịch sử làm bài của bạn.
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-main sm:text-3xl">Luyện tập</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Danh sách bài luyện tập được giao và lịch sử làm bài của bạn.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/practice/custom')}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-main px-4 py-2 text-sm font-semibold text-white hover:bg-[#002244] cursor-pointer"
+          >
+            <Sparkles className="h-4 w-4" />
+            Tự chọn bài luyện tập
+          </button>
         </div>
 
         <div className="mb-6 flex gap-2">
@@ -146,6 +181,7 @@ function PracticeListContent() {
                       <th className="px-4 py-3 text-center font-semibold text-main">Điểm</th>
                       <th className="px-4 py-3 text-center font-semibold text-main">Trạng thái</th>
                       <th className="px-4 py-3 text-left font-semibold text-main">Thời gian</th>
+                      <th className="px-4 py-3 text-right font-semibold text-main">Hành động</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,6 +206,41 @@ function PracticeListContent() {
                         <td className="px-4 py-3 text-gray-500">
                           {h.finishedAt ? formatDate(h.finishedAt) : formatDate(h.startedAt)}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {h.status === 'completed' ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => viewResultMutation.mutate(h.id)}
+                                  className="inline-flex items-center justify-center rounded-lg p-2 text-blue-500 hover:bg-blue-50 cursor-pointer"
+                                  aria-label="Xem chi tiết"
+                                  title="Xem chi tiết"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRetry(h)}
+                                  className="inline-flex items-center justify-center rounded-lg p-2 text-main hover:bg-blue-50 cursor-pointer"
+                                  aria-label="Luyện tập lại"
+                                  title="Luyện tập lại"
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/practice/attempt/${h.id}/take`)}
+                                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 cursor-pointer"
+                              >
+                                <Play className="h-3.5 w-3.5" />
+                                Tiếp tục
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -179,6 +250,12 @@ function PracticeListContent() {
           </div>
         )}
       </div>
+
+      <PracticeResultDialog
+        result={viewResult}
+        open={viewResult != null}
+        onClose={() => setViewResult(null)}
+      />
     </main>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Lightbulb } from 'lucide-react'
@@ -13,54 +13,38 @@ import type { SubmitPracticeAttemptResult } from '@/types/practice'
 
 const AUTOSAVE_INTERVAL_MS = 30_000
 
-function formatTime(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function TakePracticeContent() {
+/**
+ * Generic "take an attempt" page — used for custom (self-picked criteria)
+ * attempts and for resuming any in-progress attempt from history, where we
+ * already have an attemptId and don't need to (re-)call the exercise-based
+ * start endpoint. See practice/[id]/take for the exercise-assigned flow.
+ */
+function TakeAttemptContent() {
   const params = useParams()
   const router = useRouter()
-  const exerciseId = Number(params?.id)
+  const attemptId = Number(params?.attemptId)
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [showHint, setShowHint] = useState<Record<number, boolean>>({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<SubmitPracticeAttemptResult | null>(null)
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
   const [confirmSubmit, setConfirmSubmit] = useState(false)
   const answersRef = useRef(answers)
   answersRef.current = answers
 
   const { data: attempt, isLoading } = useQuery({
-    queryKey: ['practice-attempt', exerciseId],
-    queryFn: () => practiceService.startAttempt(exerciseId),
-    enabled: Number.isFinite(exerciseId),
+    queryKey: ['practice-attempt-by-id', attemptId],
+    queryFn: () => practiceService.getAttemptById(attemptId),
+    enabled: Number.isFinite(attemptId),
   })
-
-  // The attempt endpoint doesn't expose exercise config (time limit, reveal mode);
-  // look it up from the assigned-exercises list instead (student-accessible).
-  const { data: assigned = [] } = useQuery({
-    queryKey: ['practice-assigned'],
-    queryFn: practiceService.getAssignedExercises,
-    enabled: Number.isFinite(exerciseId),
-  })
-  const exerciseConfig = useMemo(
-    () => assigned.find((e) => e.id === exerciseId)?.config,
-    [assigned, exerciseId],
-  )
 
   useEffect(() => {
     if (attempt?.answerIds) setAnswers(attempt.answerIds)
   }, [attempt])
 
   const submitMutation = useMutation({
-    mutationFn: () => {
-      if (!attempt) throw new Error('No attempt')
-      return practiceService.submitAttempt(attempt.id, { answerIds: answersRef.current })
-    },
+    mutationFn: () => practiceService.submitAttempt(attemptId, { answerIds: answersRef.current }),
     onSuccess: (res) => setResult(res),
     onSettled: () => setSubmitting(false),
   })
@@ -79,34 +63,15 @@ function TakePracticeContent() {
     handleSubmit()
   }
 
-  // Autosave progress every 30s
   useEffect(() => {
-    if (!attempt) return
+    if (!Number.isFinite(attemptId)) return
     const interval = setInterval(() => {
-      practiceService.saveProgress(attempt.id, answersRef.current).catch(() => {})
+      practiceService.saveProgress(attemptId, answersRef.current).catch(() => {})
     }, AUTOSAVE_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [attempt])
+  }, [attemptId])
 
-  // Client-side timer: backend does NOT enforce timeLimitMinutes, so this only
-  // auto-submits from the UI side; it is not a security boundary.
-  useEffect(() => {
-    if (!exerciseConfig?.timeLimitMinutes || result) return
-    setTimeRemaining((prev) => prev ?? exerciseConfig.timeLimitMinutes! * 60)
-  }, [exerciseConfig, result])
-
-  useEffect(() => {
-    if (timeRemaining == null || result) return
-    if (timeRemaining <= 0) {
-      handleSubmit()
-      return
-    }
-    const t = setTimeout(() => setTimeRemaining((prev) => (prev != null ? prev - 1 : prev)), 1000)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRemaining, result])
-
-  if (!Number.isFinite(exerciseId)) return null
+  if (!Number.isFinite(attemptId)) return null
 
   if (isLoading || !attempt) {
     return (
@@ -127,11 +92,6 @@ function TakePracticeContent() {
           <p className="text-sm text-gray-600">
             Câu {currentIndex + 1}/{attempt.questions.length} · Đã trả lời {answeredCount}
           </p>
-          {timeRemaining != null && (
-            <span className="rounded-lg bg-white px-3 py-1 text-sm font-semibold text-main shadow-sm">
-              {formatTime(timeRemaining)}
-            </span>
-          )}
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -260,10 +220,10 @@ function TakePracticeContent() {
   )
 }
 
-export default function TakePracticePage() {
+export default function TakeAttemptPage() {
   return (
     <RoleGuard allowedRoles={['student']}>
-      <TakePracticeContent />
+      <TakeAttemptContent />
     </RoleGuard>
   )
 }

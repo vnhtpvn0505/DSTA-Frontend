@@ -1,8 +1,11 @@
 'use client'
 
 import { CheckCircle2, XCircle } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { quizService } from '@/features/quiz/quiz.service'
+import { practiceService } from '@/features/practice/practice.service'
 import type { SubmitPracticeAttemptResult } from '@/types/practice'
 
 interface PracticeResultDialogProps {
@@ -12,7 +15,21 @@ interface PracticeResultDialogProps {
 }
 
 export default function PracticeResultDialog({ open, result, onClose }: PracticeResultDialogProps) {
+  const { data: categories = [] } = useQuery({
+    queryKey: ['quiz-categories'],
+    queryFn: quizService.getCategories,
+    enabled: open,
+  })
+  const { data: skills = [] } = useQuery({
+    queryKey: ['practice-skills'],
+    queryFn: practiceService.getSkills,
+    enabled: open,
+  })
+
   if (!result) return null
+
+  const hasBreakdown =
+    (result.breakdown?.byCategory?.length ?? 0) > 0 || (result.breakdown?.bySkill?.length ?? 0) > 0
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -37,6 +54,37 @@ export default function PracticeResultDialog({ open, result, onClose }: Practice
             {result.isPassed ? 'Đạt' : 'Chưa đạt'}
           </span>
         </div>
+
+        {hasBreakdown && (
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            {result.breakdown.byCategory.length > 0 && (
+              <div className="rounded-xl border border-gray-200 p-3">
+                <p className="mb-1.5 text-xs font-semibold text-gray-500">Theo miền năng lực</p>
+                <div className="space-y-1">
+                  {result.breakdown.byCategory.map((g) => (
+                    <div key={g.id} className="flex justify-between text-xs text-gray-700">
+                      <span>{categories.find((c) => c.id === g.id)?.name ?? `#${g.id}`}</span>
+                      <span className="font-medium">{g.correct}/{g.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {result.breakdown.bySkill.length > 0 && (
+              <div className="rounded-xl border border-gray-200 p-3">
+                <p className="mb-1.5 text-xs font-semibold text-gray-500">Theo kỹ năng</p>
+                <div className="space-y-1">
+                  {result.breakdown.bySkill.map((g) => (
+                    <div key={g.id} className="flex justify-between text-xs text-gray-700">
+                      <span>{skills.find((s) => s.id === g.id)?.name ?? `#${g.id}`}</span>
+                      <span className="font-medium">{g.correct}/{g.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {result.feedback.length > 0 ? (
           <div className="space-y-3">
